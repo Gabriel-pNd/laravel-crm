@@ -136,7 +136,7 @@ class SupabaseRealtimeOperationReadModel implements RealtimeOperationReadModel
                 'clinic_id', 'contact_id', 'lead_id', 'conversation_id', 'classification', 'qualification_status',
                 'conversation_status', 'next_action', 'sla_status', 'sla_target_seconds', 'sla_elapsed_seconds',
                 'first_response_at', 'first_response_due_at', 'delivery_status', 'last_workflow_run_id',
-                'last_correlation_id', 'updated_at',
+                'appointment_status', 'visual_substate', 'pipeline_substate', 'substate', 'last_correlation_id', 'updated_at',
             ],
             'timeline' => [
                 'clinic_id', 'timeline_event_id', 'contact_id', 'conversation_id', 'lead_id', 'appointment_id',

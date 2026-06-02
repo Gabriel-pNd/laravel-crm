@@ -343,6 +343,8 @@ it('returns only ui safe allowlisted fields from fresh projections', function ()
                 'pipeline' => [[
                     'clinic_id' => '11111111-1111-4111-8111-111111111111',
                     'conversation_id' => 'conv-1',
+                    'appointment_status' => 'pending_confirmation',
+                    'visual_substate' => 'classificando',
                     'raw_payload' => ['secret' => true],
                     'message_body' => 'texto livre',
                 ]],
@@ -387,6 +389,6 @@ it('returns only ui safe allowlisted fields from fresh projections', function ()
     ));
 
     expect($state['sync']['sync_status'])->toBe('fresh');
-    expect($state['pipeline'][0])->toHaveKeys(['clinic_id', 'conversation_id']);
+    expect($state['pipeline'][0])->toHaveKeys(['clinic_id', 'conversation_id', 'appointment_status', 'visual_substate']);
     expect($state['pipeline'][0])->not->toHaveKeys(['raw_payload', 'message_body']);
 });

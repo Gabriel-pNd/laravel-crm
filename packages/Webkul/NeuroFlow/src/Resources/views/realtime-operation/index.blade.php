@@ -11,6 +11,8 @@
             'stale' => 'border-amber-200 bg-amber-50 text-amber-800',
             'failed' => 'border-red-200 bg-red-50 text-red-800',
             'disabled' => 'border-gray-200 bg-gray-50 text-gray-700',
+            'loading' => 'border-blue-200 bg-blue-50 text-blue-800',
+            'partial' => 'border-sky-200 bg-sky-50 text-sky-800',
             'empty' => 'border-gray-200 bg-gray-50 text-gray-700',
             'ok' => 'border-emerald-200 bg-emerald-50 text-emerald-800',
             'warning' => 'border-amber-200 bg-amber-50 text-amber-800',
@@ -165,6 +167,9 @@
                                 <span class="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">{{ $event['source'] }}</span>
                                 <span class="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">{{ $event['occurred_at'] }}</span>
                                 <span class="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">Trace {{ $event['correlation_id'] }}</span>
+                                @if ($event['external_ref'] !== '')
+                                    <span class="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">Ref {{ $event['external_ref'] }}</span>
+                                @endif
                                 @if ($event['evidence_marker'])
                                     <span class="rounded border border-sky-200 bg-sky-50 px-2 py-1 text-sky-800">Evidencia vinculada</span>
                                 @endif

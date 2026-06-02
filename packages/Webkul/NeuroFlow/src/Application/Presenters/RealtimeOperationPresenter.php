@@ -15,21 +15,23 @@ class RealtimeOperationPresenter
         $isFresh = $syncStatus === SyncStatus::Fresh->value;
         $pipelineRows = $isFresh ? ($state['pipeline'] ?? []) : [];
         $timelineRows = $isFresh ? ($state['timeline'] ?? []) : [];
+        $timezone = $this->timezone(data_get($state, 'clinic.timezone'));
+        $focusRow = $this->focusRow($pipelineRows);
 
         return [
-            'sync' => $this->sync($state),
+            'sync' => $this->sync($state, $timezone),
             'tenant' => $this->tenant($state),
             'pipeline_columns' => $this->pipelineColumns($pipelineRows),
-            'lead_summary' => $this->leadSummary($pipelineRows[0] ?? null),
-            'sla_card' => $this->slaCard($pipelineRows[0] ?? null),
-            'timeline' => $this->timeline($timelineRows),
-            'whatsapp_mirror' => $this->whatsappMirror($timelineRows),
+            'lead_summary' => $this->leadSummary($focusRow),
+            'sla_card' => $this->slaCard($focusRow),
+            'timeline' => $this->timeline($timelineRows, $timezone),
+            'whatsapp_mirror' => $this->whatsappMirror($timelineRows, $timezone),
             'is_degraded' => ! $isFresh,
             'degraded_message' => $isFresh ? null : $this->degradedMessage($syncStatus),
         ];
     }
 
-    private function sync(array $state): array
+    private function sync(array $state, string $timezone): array
     {
         $syncStatus = (string) data_get($state, 'sync.sync_status', SyncStatus::Failed->value);
 
@@ -40,16 +42,20 @@ class RealtimeOperationPresenter
                 SyncStatus::Stale->value => 'Desatualizado',
                 SyncStatus::Failed->value => 'Erro de sync',
                 SyncStatus::Disabled->value => 'Sync desabilitado',
+                'loading' => 'Carregando sync',
+                'partial' => 'Sync parcial',
                 default => 'Sync invalido',
             },
             'last_error_code' => data_get($state, 'sync.last_error_code'),
             'lag_seconds' => data_get($state, 'sync.lag_seconds'),
-            'updated_label' => $this->timeLabel($state['updated_at'] ?? data_get($state, 'sync.last_success_at')),
+            'updated_label' => $this->timeLabel($state['updated_at'] ?? data_get($state, 'sync.last_success_at'), $timezone),
             'polling_state' => match ($syncStatus) {
                 SyncStatus::Fresh->value => 'polling atualizado',
                 SyncStatus::Stale->value => 'polling atrasado',
                 SyncStatus::Failed->value => 'polling com erro',
                 SyncStatus::Disabled->value => 'polling indisponivel',
+                'loading' => 'polling carregando',
+                'partial' => 'polling parcial',
                 default => 'polling parcial',
             },
         ];
@@ -62,6 +68,40 @@ class RealtimeOperationPresenter
             'timezone' => (string) data_get($state, 'clinic.timezone', 'America/Sao_Paulo'),
             'channel_label' => 'Canal resolvido pelo backend',
         ];
+    }
+
+    private function focusRow(array $rows): ?array
+    {
+        $candidates = array_values(array_filter($rows, 'is_array'));
+
+        if ($candidates === []) {
+            return null;
+        }
+
+        usort($candidates, function (array $left, array $right): int {
+            return $this->focusScore($right) <=> $this->focusScore($left);
+        });
+
+        return $candidates[0];
+    }
+
+    private function focusScore(array $row): int
+    {
+        $sla = (string) ($row['sla_status'] ?? 'not_applicable');
+        $stage = $this->stageFor($row);
+
+        return match (true) {
+            $sla === 'breached' => 100,
+            $sla === 'at_risk' => 90,
+            $stage === PipelineStage::Exception => 80,
+            $stage === PipelineStage::HumanNeeded => 75,
+            $stage === PipelineStage::AppointmentOffered => 70,
+            $stage === PipelineStage::Booked => 60,
+            $stage === PipelineStage::Qualifying => 50,
+            $stage === PipelineStage::Qualified => 40,
+            $stage === PipelineStage::Classified => 30,
+            default => 10,
+        };
     }
 
     private function pipelineColumns(array $rows): array
@@ -162,15 +202,16 @@ class RealtimeOperationPresenter
         ];
     }
 
-    private function timeline(array $rows): array
+    private function timeline(array $rows, string $timezone): array
     {
-        return array_values(array_map(function (array $row): array {
+        return array_values(array_map(function (array $row) use ($timezone): array {
             return [
+                'event_type' => (string) ($row['event_type'] ?? 'event'),
                 'title' => $this->eventLabel((string) ($row['event_type'] ?? 'event')),
                 'summary' => $this->safeText($row['summary'] ?? 'Resumo seguro indisponivel'),
                 'actor' => $this->actorLabel((string) ($row['actor_type'] ?? 'system')),
                 'source' => $this->safeText($row['source_system'] ?? 'sistema'),
-                'occurred_at' => $this->timeLabel($row['occurred_at'] ?? null),
+                'occurred_at' => $this->timeLabel($row['occurred_at'] ?? null, $timezone),
                 'status' => $this->eventStatus((string) ($row['event_type'] ?? 'event')),
                 'correlation_id' => $this->shortId((string) ($row['correlation_id'] ?? '')),
                 'evidence_marker' => $this->hasEvidenceMarker($row),
@@ -179,13 +220,20 @@ class RealtimeOperationPresenter
         }, array_filter($rows, 'is_array')));
     }
 
-    private function whatsappMirror(array $rows): array
+    private function whatsappMirror(array $rows, string $timezone): array
     {
-        $messages = array_values(array_filter($this->timeline($rows), function (array $event): bool {
-            $title = Str::lower($event['title']);
+        $messageRows = array_values(array_filter($rows, function ($row): bool {
+            if (! is_array($row)) {
+                return false;
+            }
 
-            return Str::contains($title, ['mensagem', 'whatsapp', 'resposta']);
+            $eventType = Str::lower((string) ($row['event_type'] ?? ''));
+            $sourceSystem = Str::lower((string) ($row['source_system'] ?? ''));
+
+            return Str::contains($sourceSystem, 'whatsapp')
+                || in_array($eventType, ['message_received', 'message_sent', 'response_sent', 'whatsapp_message_received', 'whatsapp_message_sent'], true);
         }));
+        $messages = $this->timeline($messageRows, $timezone);
 
         return [
             'empty' => count($messages) === 0,
@@ -195,29 +243,49 @@ class RealtimeOperationPresenter
 
     private function stageFor(array $row): PipelineStage
     {
-        $qualification = (string) ($row['qualification_status'] ?? 'not_started');
-        $conversation = (string) ($row['conversation_status'] ?? 'open');
-        $delivery = (string) ($row['delivery_status'] ?? 'not_applicable');
-        $classification = (string) ($row['classification'] ?? 'unknown');
+        $qualification = Str::lower((string) ($row['qualification_status'] ?? 'not_started'));
+        $conversation = Str::lower((string) ($row['conversation_status'] ?? 'open'));
+        $delivery = Str::lower((string) ($row['delivery_status'] ?? 'not_applicable'));
+        $classification = Str::lower((string) ($row['classification'] ?? 'unknown'));
+        $appointment = Str::lower((string) ($row['appointment_status'] ?? ''));
+        $substate = Str::lower((string) ($row['visual_substate'] ?? $row['pipeline_substate'] ?? $row['substate'] ?? ''));
         $nextAction = Str::lower((string) ($row['next_action'] ?? ''));
 
-        if ($delivery === 'exception_recorded' || $qualification === 'blocked' || $conversation === 'escalated') {
+        if (
+            $delivery === 'exception_recorded'
+            || $qualification === 'blocked'
+            || $conversation === 'escalated'
+            || $appointment === 'failed_exception'
+            || Str::contains($substate, ['excecao', 'exception'])
+        ) {
             return PipelineStage::Exception;
         }
 
-        if ($qualification === 'needs_human' || Str::contains($nextAction, ['handoff', 'humano'])) {
+        if (
+            $qualification === 'needs_human'
+            || $appointment === 'reschedule_requested'
+            || Str::contains($nextAction, ['handoff', 'humano'])
+            || Str::contains($substate, ['humano', 'aguardando_responsavel', 'waiting_responsible'])
+        ) {
             return PipelineStage::HumanNeeded;
         }
 
-        if ($conversation === 'booked' || Str::contains($nextAction, ['confirmed', 'agendado'])) {
+        if ($appointment === 'confirmed' || $conversation === 'booked' || Str::contains($nextAction, ['confirmed', 'agendado'])) {
             return PipelineStage::Booked;
         }
 
-        if (Str::contains($nextAction, ['offer', 'oferecido', 'slot', 'pending_confirmation'])) {
+        if (
+            in_array($appointment, ['offered', 'hold', 'pending_confirmation'], true)
+            || Str::contains($nextAction, ['offer', 'oferecido', 'slot', 'pending_confirmation'])
+        ) {
             return PipelineStage::AppointmentOffered;
         }
 
-        if ($conversation === 'closed' && Str::contains($nextAction, ['lost', 'perdido'])) {
+        if (
+            $appointment === 'cancelled'
+            || ($conversation === 'closed' && ($nextAction === '' || Str::contains($nextAction, ['lost', 'perdido', 'no_show', 'sem proxima', 'sem_proxima'])))
+            || Str::contains($substate, ['perdido', 'lost'])
+        ) {
             return PipelineStage::Lost;
         }
 
@@ -225,8 +293,16 @@ class RealtimeOperationPresenter
             return PipelineStage::Qualified;
         }
 
-        if ($qualification === 'in_progress' || in_array($conversation, ['waiting_contact', 'waiting_system'], true)) {
+        if (
+            $qualification === 'in_progress'
+            || in_array($conversation, ['waiting_contact', 'waiting_system'], true)
+            || Str::contains($substate, ['classificando', 'qualificando', 'classifying', 'qualifying'])
+        ) {
             return PipelineStage::Qualifying;
+        }
+
+        if (Str::contains($substate, ['nutricao', 'nurture'])) {
+            return PipelineStage::Qualified;
         }
 
         if ($classification !== 'unknown') {
@@ -325,13 +401,32 @@ class RealtimeOperationPresenter
             || Str::contains((string) ($row['source_system'] ?? ''), ['ssot', 'rag']);
     }
 
-    private function timeLabel(?string $value): string
+    private function timeLabel(mixed $value, string $timezone): string
     {
-        if (! $value) {
+        if (! is_scalar($value) || (string) $value === '') {
             return 'Sem timestamp';
         }
 
-        return Carbon::parse($value)->timezone('America/Sao_Paulo')->format('d/m/Y H:i');
+        try {
+            return Carbon::parse((string) $value)->timezone($timezone)->format('d/m/Y H:i');
+        } catch (\Throwable) {
+            return 'Sem timestamp';
+        }
+    }
+
+    private function timezone(mixed $value): string
+    {
+        if (! is_scalar($value) || (string) $value === '') {
+            return 'America/Sao_Paulo';
+        }
+
+        try {
+            Carbon::now((string) $value);
+
+            return (string) $value;
+        } catch (\Throwable) {
+            return 'America/Sao_Paulo';
+        }
     }
 
     private function shortId(string $value): string

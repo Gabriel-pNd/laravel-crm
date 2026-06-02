@@ -77,6 +77,53 @@ it('maps canonical pipeline states from normalized projection rows', function ()
     expect($columns['novo']['items'][0]['correlation_id'])->toBe('corr-new...6789');
 });
 
+it('uses operational priority instead of arbitrary first row for lead focus and SLA', function () {
+    $presented = app(RealtimeOperationPresenter::class)->present(freshRealtimeState([
+        'pipeline' => [
+            [
+                'lead_id' => 'lead-ok',
+                'classification' => 'new_lead',
+                'sla_status' => 'within_target',
+                'sla_elapsed_seconds' => 20,
+            ],
+            [
+                'lead_id' => 'lead-risk',
+                'qualification_status' => 'in_progress',
+                'sla_status' => 'breached',
+                'sla_elapsed_seconds' => 190,
+                'sla_target_seconds' => 120,
+                'next_action' => 'Responder responsavel',
+            ],
+        ],
+    ]));
+
+    expect($presented['lead_summary']['title'])->toBe('Lead lead-risk');
+    expect($presented['sla_card']['status'])->toBe('breached');
+    expect($presented['sla_card']['elapsed'])->toBe('190s');
+});
+
+it('maps appointment status, closed conversations and visual substates to canonical stages', function () {
+    $presented = app(RealtimeOperationPresenter::class)->present(freshRealtimeState([
+        'pipeline' => [
+            ['lead_id' => 'lead-offered', 'appointment_status' => 'pending_confirmation'],
+            ['lead_id' => 'lead-confirmed', 'appointment_status' => 'confirmed'],
+            ['lead_id' => 'lead-lost', 'conversation_status' => 'closed'],
+            ['lead_id' => 'lead-human', 'visual_substate' => 'aguardando_responsavel'],
+            ['lead_id' => 'lead-qualifying', 'pipeline_substate' => 'classificando'],
+            ['lead_id' => 'lead-exception', 'substate' => 'exception_review'],
+        ],
+    ]));
+
+    $columns = collect($presented['pipeline_columns'])->keyBy('key');
+
+    expect($columns['agendamento_oferecido']['items'])->toHaveCount(1);
+    expect($columns['agendado']['items'])->toHaveCount(1);
+    expect($columns['perdido']['items'])->toHaveCount(1);
+    expect($columns['humano_necessario']['items'])->toHaveCount(1);
+    expect($columns['qualificando']['items'])->toHaveCount(1);
+    expect($columns['excecao']['items'])->toHaveCount(1);
+});
+
 it('maps SLA status to textual UI badges', function (string $persisted, string $expected, string $label) {
     $presented = app(RealtimeOperationPresenter::class)->present(freshRealtimeState([
         'pipeline' => [[
@@ -143,20 +190,116 @@ it('builds timeline and WhatsApp mirror from UI-safe timeline events', function 
                 'actor_type' => 'automation',
                 'source_system' => 'ssot',
                 'correlation_id' => 'corr-evidence-123456789',
+                'masked_external_ref' => 'doc-***-123',
+            ],
+            [
+                'clinic_id' => '11111111-1111-4111-8111-111111111111',
+                'event_type' => 'operator_note',
+                'summary' => 'Resposta administrativa sem canal WhatsApp',
+                'occurred_at' => '2026-06-02T12:03:00Z',
+                'actor_type' => 'operator',
+                'source_system' => 'crm',
             ],
         ],
     ]));
 
-    expect($presented['timeline'])->toHaveCount(2);
+    expect($presented['timeline'])->toHaveCount(3);
     expect($presented['timeline'][0]['title'])->toBe('Mensagem recebida');
     expect($presented['timeline'][0]['actor'])->toBe('Responsavel');
     expect($presented['timeline'][1]['evidence_marker'])->toBeTrue();
+    expect($presented['timeline'][1]['external_ref'])->toBe('doc-***-123');
     expect($presented['whatsapp_mirror']['messages'])->toHaveCount(1);
     expect($presented['whatsapp_mirror']['messages'][0]['summary'])->toBe('Mensagem recebida com resumo seguro');
 });
 
-it('keeps the cockpit view markers for required story components', function () {
-    $view = file_get_contents(base_path('packages/Webkul/NeuroFlow/src/Resources/views/realtime-operation/index.blade.php'));
+it('filters WhatsApp mirror by canonical event/source fields instead of translated title text', function () {
+    $presented = app(RealtimeOperationPresenter::class)->present(freshRealtimeState([
+        'timeline' => [
+            [
+                'event_type' => 'response_sent',
+                'summary' => 'Resumo UI-safe enviado',
+                'occurred_at' => '2026-06-02T12:01:00Z',
+                'actor_type' => 'automation',
+                'source_system' => 'crm',
+            ],
+            [
+                'event_type' => 'operator_note',
+                'summary' => 'Evento de CRM com palavra resposta no resumo',
+                'occurred_at' => '2026-06-02T12:02:00Z',
+                'actor_type' => 'operator',
+                'source_system' => 'crm',
+            ],
+        ],
+    ]));
+
+    expect($presented['whatsapp_mirror']['messages'])->toHaveCount(1);
+    expect($presented['whatsapp_mirror']['messages'][0]['event_type'])->toBe('response_sent');
+});
+
+it('uses the clinic timezone and tolerates invalid timestamps', function () {
+    $presented = app(RealtimeOperationPresenter::class)->present(freshRealtimeState([
+        'clinic' => [
+            'id' => '11111111-1111-4111-8111-111111111111',
+            'name' => 'Clinica Manaus',
+            'timezone' => 'America/Manaus',
+        ],
+        'updated_at' => '2026-06-02T12:00:00Z',
+        'timeline' => [
+            [
+                'event_type' => 'message_received',
+                'summary' => 'Timestamp invalido nao quebra cockpit',
+                'occurred_at' => 'nao-e-data',
+                'actor_type' => 'contact',
+                'source_system' => 'whatsapp',
+            ],
+        ],
+    ]));
+
+    expect($presented['sync']['updated_label'])->toBe('02/06/2026 08:00');
+    expect($presented['timeline'][0]['occurred_at'])->toBe('Sem timestamp');
+});
+
+it('keeps loading and partial sync states explicit in the presenter', function (string $syncStatus, string $label, string $pollingState) {
+    $presented = app(RealtimeOperationPresenter::class)->present(freshRealtimeState([
+        'sync' => [
+            'sync_status' => $syncStatus,
+            'last_success_at' => '2026-06-02T12:00:00Z',
+        ],
+    ]));
+
+    expect($presented['sync']['label'])->toBe($label);
+    expect($presented['sync']['polling_state'])->toBe($pollingState);
+})->with([
+    ['loading', 'Carregando sync', 'polling carregando'],
+    ['partial', 'Sync parcial', 'polling parcial'],
+]);
+
+it('renders the cockpit view with operational data and masked references', function () {
+    test()->actingAs(getDefaultAdmin(), 'user');
+    view()->share('errors', new \Illuminate\Support\ViewErrorBag);
+
+    $cockpit = app(RealtimeOperationPresenter::class)->present(freshRealtimeState([
+        'pipeline' => [[
+            'lead_id' => 'lead-view',
+            'classification' => 'new_lead',
+            'sla_status' => 'at_risk',
+            'sla_elapsed_seconds' => 110,
+        ]],
+        'timeline' => [[
+            'event_type' => 'message_received',
+            'summary' => 'Resumo seguro para view',
+            'occurred_at' => '2026-06-02T12:01:00Z',
+            'actor_type' => 'contact',
+            'source_system' => 'whatsapp',
+            'correlation_id' => 'corr-view-123456789',
+            'masked_external_ref' => 'wa-***-123',
+        ]],
+    ]));
+
+    $view = view('neuroflow::realtime-operation.index', [
+        'cockpit' => $cockpit,
+        'desktopMinWidth' => 1024,
+    ])->render();
 
     expect($view)->toContain('SyncStatusIndicator');
     expect($view)->toContain('SlaCard');
@@ -164,4 +307,6 @@ it('keeps the cockpit view markers for required story components', function () {
     expect($view)->toContain('tenant channel header');
     expect($view)->toContain('automation human actor badge');
     expect($view)->toContain('WhatsApp conversation mirror');
+    expect($view)->toContain('Lead lead-view');
+    expect($view)->toContain('Ref wa-***-123');
 });
