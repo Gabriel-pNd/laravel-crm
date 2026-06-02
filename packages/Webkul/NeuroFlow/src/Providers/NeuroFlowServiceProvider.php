@@ -6,6 +6,7 @@ use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Webkul\NeuroFlow\Application\Actions\GetRealtimeOperationState;
+use Webkul\NeuroFlow\Application\Presenters\RealtimeOperationPresenter;
 use Webkul\NeuroFlow\Domain\Contracts\ActiveClinicMemberships;
 use Webkul\NeuroFlow\Domain\Contracts\RealtimeOperationReadModel;
 use Webkul\NeuroFlow\Http\Middleware\ResolveActiveClinic;
@@ -23,6 +24,7 @@ class NeuroFlowServiceProvider extends ServiceProvider
         $this->app->bind(RealtimeOperationReadModel::class, SupabaseRealtimeOperationReadModel::class);
         $this->app->bind(ActiveClinicMemberships::class, SupabaseActiveClinicMemberships::class);
         $this->app->bind(GetRealtimeOperationState::class);
+        $this->app->bind(RealtimeOperationPresenter::class);
     }
 
     public function boot(Router $router): void
