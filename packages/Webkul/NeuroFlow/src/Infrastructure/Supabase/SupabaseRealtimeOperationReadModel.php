@@ -69,10 +69,16 @@ class SupabaseRealtimeOperationReadModel implements RealtimeOperationReadModel
 
     private function normalizeState(ActiveClinic $clinic, array $payload): array
     {
+        $this->assertTenantMatches($clinic, $payload);
+
         $sync = $payload['sync'] ?? [];
         $syncStatus = $this->validSyncStatus($sync['sync_status'] ?? null);
         $updatedAt = $payload['updated_at'] ?? $sync['last_success_at'] ?? null;
         $lagSeconds = $sync['lag_seconds'] ?? $this->lagSeconds($updatedAt);
+
+        if ($syncStatus === SyncStatus::Fresh->value && $updatedAt === null) {
+            throw new \UnexpectedValueException('Fresh projection has no sync timestamp.');
+        }
 
         if ($syncStatus === SyncStatus::Fresh->value && $lagSeconds !== null && $lagSeconds > config('neuroflow.stale_after_seconds')) {
             $syncStatus = SyncStatus::Stale->value;
@@ -90,13 +96,72 @@ class SupabaseRealtimeOperationReadModel implements RealtimeOperationReadModel
                 'last_error_code' => $sync['last_error_code'] ?? null,
                 'lag_seconds' => $lagSeconds,
             ],
-            'pipeline' => $isCanonicalFresh ? ($payload['pipeline'] ?? []) : [],
-            'timeline' => $isCanonicalFresh ? ($payload['timeline'] ?? []) : [],
-            'agenda' => $isCanonicalFresh ? ($payload['agenda'] ?? []) : [],
-            'evidence' => $isCanonicalFresh ? ($payload['evidence'] ?? []) : [],
-            'exceptions' => $isCanonicalFresh ? ($payload['exceptions'] ?? []) : [],
+            'pipeline' => $isCanonicalFresh ? $this->sanitizeSection($clinic, $payload, 'pipeline') : [],
+            'timeline' => $isCanonicalFresh ? $this->sanitizeSection($clinic, $payload, 'timeline') : [],
+            'agenda' => $isCanonicalFresh ? $this->sanitizeSection($clinic, $payload, 'agenda') : [],
+            'evidence' => $isCanonicalFresh ? $this->sanitizeSection($clinic, $payload, 'evidence') : [],
+            'exceptions' => $isCanonicalFresh ? $this->sanitizeSection($clinic, $payload, 'exceptions') : [],
             'updated_at' => $updatedAt,
         ];
+    }
+
+    private function assertTenantMatches(ActiveClinic $clinic, array $payload): void
+    {
+        if (isset($payload['clinic_id']) && (string) $payload['clinic_id'] !== $clinic->id) {
+            throw new \UnexpectedValueException('Projection tenant does not match active clinic.');
+        }
+    }
+
+    private function sanitizeSection(ActiveClinic $clinic, array $payload, string $section): array
+    {
+        $rows = $payload[$section] ?? [];
+
+        if (! is_array($rows)) {
+            throw new \UnexpectedValueException('Projection section is not an array.');
+        }
+
+        return array_map(function ($row) use ($clinic, $section): array {
+            if (! is_array($row) || (string) ($row['clinic_id'] ?? '') !== $clinic->id) {
+                throw new \UnexpectedValueException('Projection row tenant does not match active clinic.');
+            }
+
+            return array_intersect_key($row, array_flip($this->allowedFields($section)));
+        }, $rows);
+    }
+
+    private function allowedFields(string $section): array
+    {
+        return match ($section) {
+            'pipeline' => [
+                'clinic_id', 'contact_id', 'lead_id', 'conversation_id', 'classification', 'qualification_status',
+                'conversation_status', 'next_action', 'sla_status', 'sla_target_seconds', 'sla_elapsed_seconds',
+                'first_response_at', 'first_response_due_at', 'delivery_status', 'last_workflow_run_id',
+                'last_correlation_id', 'updated_at',
+            ],
+            'timeline' => [
+                'clinic_id', 'timeline_event_id', 'contact_id', 'conversation_id', 'lead_id', 'appointment_id',
+                'event_type', 'summary', 'occurred_at', 'actor_type', 'source_system', 'correlation_id',
+                'masked_external_ref',
+            ],
+            'agenda' => [
+                'clinic_id', 'appointment_id', 'slot_id', 'unit_id', 'professional_id', 'room_id', 'service_id',
+                'duration_minutes', 'starts_at', 'ends_at', 'timezone', 'appointment_status', 'booking_source',
+                'contact_id', 'lead_id', 'patient_id', 'sync_status', 'last_correlation_id',
+            ],
+            'evidence' => [
+                'clinic_id', 'conversation_id', 'evidence_id', 'source_id', 'title', 'source_type',
+                'source_status', 'approval_state', 'knowledge_version', 'source_date', 'cited_reference',
+                'safe_summary', 'confidence', 'support', 'policy_version', 'rule_version', 'prompt_version',
+                'fallback_used', 'fallback_reason', 'handoff_required', 'recorded_at',
+            ],
+            'exceptions' => [
+                'clinic_id', 'human_escalation_id', 'severity', 'exception_reason', 'reason', 'status',
+                'automation_state', 'affected_entity_type', 'affected_entity_id', 'safe_summary',
+                'suggested_action', 'sla_impact', 'owner_role', 'owner_user_id', 'created_at', 'claimed_at',
+                'resolved_at', 'due_at', 'linked_event_id', 'conversation_id', 'contact_id', 'lead_id',
+                'patient_id', 'appointment_id', 'workflow_run_id', 'correlation_id', 'masked_external_ref',
+            ],
+        };
     }
 
     private function disabledState(ActiveClinic $clinic): array

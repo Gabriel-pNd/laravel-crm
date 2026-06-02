@@ -3,9 +3,14 @@
 namespace Webkul\NeuroFlow\Infrastructure\Krayin;
 
 use Illuminate\Http\Request;
+use Webkul\NeuroFlow\Domain\Contracts\ActiveClinicMemberships;
 
 class ActiveClinicResolver
 {
+    public function __construct(private readonly ActiveClinicMemberships $memberships)
+    {
+    }
+
     public function resolve(Request $request): ?ActiveClinic
     {
         $user = $request->user('user') ?? auth()->guard('user')->user();
@@ -22,12 +27,9 @@ class ActiveClinicResolver
             return null;
         }
 
-        return new ActiveClinic(
-            id: (string) config('neuroflow.demo_clinic_id'),
-            name: (string) config('neuroflow.demo_clinic_name'),
-            timezone: (string) config('neuroflow.demo_clinic_timezone'),
-            userId: (int) $user->id,
-        );
+        $requestedClinicId = (string) ($request->input('clinic_id') ?: config('neuroflow.demo_clinic_id'));
+
+        return $this->memberships->activeClinicFor($user, $requestedClinicId);
     }
 
     private function hasNeuroFlowPermission(object $user): bool

@@ -14,4 +14,8 @@ it('prioritizes neuroflow menu entries before legacy crm modules', function () {
     expect($menu['activities']['sort'])->toBeGreaterThan(100);
     expect($menu['products']['sort'])->toBeGreaterThan(100);
     expect($menu['settings']['sort'])->toBeLessThan(100);
+    expect($menu['settings.inventory']['sort'])->toBeGreaterThan(800);
+    expect($menu['settings.inventory.warehouse']['sort'])->toBeGreaterThan(800);
+    expect($menu['settings.automation']['sort'])->toBeGreaterThan(800);
+    expect($menu['settings.automation.workflows']['sort'])->toBeGreaterThan(800);
 });

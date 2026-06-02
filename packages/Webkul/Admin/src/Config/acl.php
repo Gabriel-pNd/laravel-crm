@@ -370,12 +370,12 @@ return [
         'key' => 'settings.inventory',
         'name' => 'admin::app.acl.inventory',
         'route' => ['admin.settings.warehouse.index'],
-        'sort' => 3,
+        'sort' => 900,
     ], [
         'key' => 'settings.inventory.warehouse',
         'name' => 'admin::app.acl.warehouses',
         'route' => ['admin.settings.warehouse.index'],
-        'sort' => 1,
+        'sort' => 901,
     ], [
         'key' => 'settings.inventory.warehouse.create',
         'name' => 'admin::app.acl.create',
@@ -395,12 +395,12 @@ return [
         'key' => 'settings.automation',
         'name' => 'admin::app.acl.automation',
         'route' => ['admin.settings.attributes.index', 'admin.settings.email_templates.index', 'admin.settings.workflows.index'],
-        'sort' => 4,
+        'sort' => 910,
     ], [
         'key' => 'settings.automation.attributes',
         'name' => 'admin::app.acl.attributes',
         'route' => 'admin.settings.attributes.index',
-        'sort' => 1,
+        'sort' => 911,
     ], [
         'key' => 'settings.automation.attributes.create',
         'name' => 'admin::app.acl.create',
@@ -420,7 +420,7 @@ return [
         'key' => 'settings.automation.email_templates',
         'name' => 'admin::app.acl.email-templates',
         'route' => 'admin.settings.email_templates.index',
-        'sort' => 2,
+        'sort' => 912,
     ], [
         'key' => 'settings.automation.email_templates.create',
         'name' => 'admin::app.acl.create',
@@ -440,7 +440,7 @@ return [
         'key' => 'settings.automation.workflows',
         'name' => 'admin::app.acl.workflows',
         'route' => 'admin.settings.workflows.index',
-        'sort' => 3,
+        'sort' => 916,
     ], [
         'key' => 'settings.automation.workflows.create',
         'name' => 'admin::app.acl.create',
@@ -460,7 +460,7 @@ return [
         'key' => 'settings.automation.events',
         'name' => 'admin::app.acl.event',
         'route' => 'admin.settings.marketing.events.index',
-        'sort' => 4,
+        'sort' => 913,
     ], [
         'key' => 'settings.automation.events.create',
         'name' => 'admin::app.acl.create',
@@ -480,7 +480,7 @@ return [
         'key' => 'settings.automation.campaigns',
         'name' => 'admin::app.acl.campaigns',
         'route' => 'admin.settings.marketing.campaigns.index',
-        'sort' => 5,
+        'sort' => 914,
     ], [
         'key' => 'settings.automation.campaigns.create',
         'name' => 'admin::app.acl.create',
@@ -500,7 +500,7 @@ return [
         'key' => 'settings.automation.webhooks',
         'name' => 'admin::app.acl.webhook',
         'route' => 'admin.settings.webhooks.index',
-        'sort' => 6,
+        'sort' => 915,
     ], [
         'key' => 'settings.automation.webhooks.create',
         'name' => 'admin::app.acl.create',
@@ -520,7 +520,7 @@ return [
         'key' => 'settings.automation.data_transfer',
         'name' => 'admin::app.acl.data-transfer',
         'route' => 'admin.settings.data_transfer.imports.index',
-        'sort' => 7,
+        'sort' => 917,
     ], [
         'key' => 'settings.automation.data_transfer.imports',
         'name' => 'admin::app.acl.imports',
