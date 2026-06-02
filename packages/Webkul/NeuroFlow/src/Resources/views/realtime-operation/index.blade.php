@@ -230,6 +230,8 @@
                                 <span class="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">{{ $exception['sla_label'] }}</span>
                                 <span class="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">{{ $exception['owner_label'] }}</span>
                                 <span class="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">Criada {{ $exception['created_at'] }}</span>
+                                <span class="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">Assumida {{ $exception['claimed_at'] }}</span>
+                                <span class="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">Resolvida {{ $exception['resolved_at'] }}</span>
                                 <span class="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">Vence {{ $exception['due_at'] }}</span>
                                 <span class="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">Trace {{ $exception['trace'] }}</span>
                             </div>

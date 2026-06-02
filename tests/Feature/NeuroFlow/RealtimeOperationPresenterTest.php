@@ -214,10 +214,24 @@ it('presents schedule slots with canonical status, timezone labels and honest co
                 'starts_at' => 'not-a-date',
                 'sync_status' => 'fresh',
             ],
+            [
+                'appointment_id' => 'appt-invalid-start',
+                'appointment_status' => 'pending_confirmation',
+                'starts_at' => 'not-a-date',
+                'ends_at' => '2026-06-03T13:50:00Z',
+                'sync_status' => 'fresh',
+            ],
+            [
+                'appointment_id' => 'appt-stale-confirmed',
+                'appointment_status' => 'confirmed',
+                'starts_at' => '2026-06-03T14:00:00Z',
+                'ends_at' => '2026-06-03T14:50:00Z',
+                'sync_status' => 'stale',
+            ],
         ],
     ]));
 
-    expect($presented['schedule']['items'])->toHaveCount(2);
+    expect($presented['schedule']['items'])->toHaveCount(4);
     expect($presented['schedule']['items'][0]['component'])->toBe('CompactScheduleSlot');
     expect($presented['schedule']['items'][0]['status_label'])->toBe('Confirmado');
     expect($presented['schedule']['items'][0]['confirmation_state'])->toBe('confirmado por projection fresca');
@@ -227,6 +241,9 @@ it('presents schedule slots with canonical status, timezone labels and honest co
     expect($presented['schedule']['items'][1]['status_label'])->toBe('Falha ou conflito');
     expect($presented['schedule']['items'][1]['severity'])->toBe('breached');
     expect($presented['schedule']['items'][1]['time_range'])->toBe('Sem timestamp');
+    expect($presented['schedule']['items'][2]['time_range'])->toBe('Sem timestamp');
+    expect($presented['schedule']['items'][3]['status_label'])->toBe('Falha ou conflito');
+    expect($presented['schedule']['items'][3]['confirmation_state'])->toBe('resultado tecnico ou excecao');
 });
 
 it('presents evidence badges and drawer data without leaking non allowlisted fields', function () {
@@ -236,8 +253,8 @@ it('presents evidence badges and drawer data without leaking non allowlisted fie
                 'evidence_id' => 'evidence-approved-123456789',
                 'title' => 'Horario de funcionamento',
                 'source_type' => 'faq',
-                'source_status' => 'active',
-                'approval_state' => 'approved',
+                'source_status' => ' Active ',
+                'approval_state' => ' Approved ',
                 'knowledge_version' => 'kv-2026-06',
                 'source_date' => '2026-06-01',
                 'cited_reference' => 'FAQ-12',
@@ -280,7 +297,7 @@ it('presents human exception cards with reason severity SLA owner and trace', fu
                 'human_escalation_id' => 'exc-booking-123456789',
                 'severity' => 'high',
                 'exception_reason' => 'booking_conflict',
-                'status' => 'open',
+                'status' => 'assigned',
                 'automation_state' => 'pausada',
                 'affected_entity_type' => 'appointment',
                 'safe_summary' => 'Conflito de sala detectado.',
@@ -289,21 +306,45 @@ it('presents human exception cards with reason severity SLA owner and trace', fu
                 'owner_role' => 'receptionist',
                 'owner_user_id' => 'user-1',
                 'created_at' => '2026-06-02T12:10:00Z',
+                'claimed_at' => '2026-06-02T12:12:00Z',
                 'due_at' => '2026-06-02T12:20:00Z',
                 'correlation_id' => 'corr-exception-123456789',
                 'stack_trace' => 'nao pode aparecer',
             ],
+            [
+                'human_escalation_id' => 'exc-progress',
+                'severity' => 'medium',
+                'exception_reason' => 'source_missing',
+                'status' => 'in_progress',
+                'safe_summary' => 'Fonte ausente em tratamento.',
+                'suggested_action' => 'Validar fonte.',
+            ],
+            [
+                'human_escalation_id' => 'exc-resolved',
+                'exception_reason' => 'low_confidence',
+                'status' => 'resolved',
+                'safe_summary' => 'Caso ja resolvido.',
+            ],
+            [
+                'human_escalation_id' => 'exc-cancelled',
+                'exception_reason' => 'opt_out',
+                'status' => 'cancelled',
+                'safe_summary' => 'Caso cancelado.',
+            ],
         ],
     ]));
 
-    expect($presented['exceptions']['items'])->toHaveCount(1);
+    expect($presented['exceptions']['items'])->toHaveCount(2);
     expect($presented['exceptions']['items'][0]['component'])->toBe('HumanExceptionCard');
     expect($presented['exceptions']['items'][0]['reason_label'])->toBe('Conflito de agenda');
     expect($presented['exceptions']['items'][0]['severity_label'])->toBe('Alta');
+    expect($presented['exceptions']['items'][0]['status_label'])->toBe('Atribuida');
     expect($presented['exceptions']['items'][0]['sla_label'])->toBe('SLA violado');
     expect($presented['exceptions']['items'][0]['owner_label'])->toBe('Responsavel: receptionist · user-1');
+    expect($presented['exceptions']['items'][0]['claimed_at'])->toBe('02/06/2026 09:12');
     expect($presented['exceptions']['items'][0]['trace'])->toBe('corr-exc...6789');
     expect($presented['exceptions']['items'][0])->not->toHaveKey('stack_trace');
+    expect($presented['exceptions']['items'][1]['status_label'])->toBe('Em andamento');
 });
 
 it('builds timeline and WhatsApp mirror from UI-safe timeline events', function () {
@@ -479,6 +520,8 @@ it('renders schedule evidence and exception components with accessible labels', 
             'suggested_action' => 'Validar fonte com coordencao.',
             'sla_impact' => 'at_risk',
             'owner_role' => 'manager_coordinator',
+            'claimed_at' => '2026-06-02T12:15:00Z',
+            'resolved_at' => '2026-06-02T12:25:00Z',
         ]],
     ]));
 
@@ -493,6 +536,8 @@ it('renders schedule evidence and exception components with accessible labels', 
     expect($view)->toContain('HumanExceptionCard');
     expect($view)->toContain('aria-expanded');
     expect($view)->toContain('aria-controls');
+    expect($view)->toContain('Assumida 02/06/2026 09:15');
+    expect($view)->toContain('Resolvida 02/06/2026 09:25');
     expect($view)->toContain('Resumo seguro de evidencia.');
     expect($view)->toContain('Fonte ausente para responder.');
 });

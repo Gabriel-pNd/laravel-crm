@@ -250,7 +250,7 @@ class RealtimeOperationPresenter
     private function schedule(array $rows, string $clinicTimezone): array
     {
         $items = array_values(array_map(function (array $row) use ($clinicTimezone): array {
-            $status = Str::lower((string) ($row['appointment_status'] ?? 'failed_exception'));
+            $status = $this->scheduleRowStatus($row);
             $timezone = $this->timezone($row['timezone'] ?? $clinicTimezone);
             $startsAt = $this->timeLabel($row['starts_at'] ?? null, $timezone);
             $endsAt = $this->timeLabel($row['ends_at'] ?? null, $timezone);
@@ -263,7 +263,7 @@ class RealtimeOperationPresenter
                 'status_label' => $statusMeta['label'],
                 'severity' => $statusMeta['severity'],
                 'confirmation_state' => $statusMeta['confirmation_state'],
-                'time_range' => $endsAt === 'Sem timestamp' ? $startsAt : $startsAt.' - '.Str::after($endsAt, ' '),
+                'time_range' => $this->scheduleTimeRange($startsAt, $endsAt),
                 'timezone' => $timezone,
                 'resource_label' => $this->scheduleResource($row),
                 'duration_label' => $this->durationLabel($row['duration_minutes'] ?? null),
@@ -282,8 +282,10 @@ class RealtimeOperationPresenter
         $items = array_values(array_map(function (array $row) use ($timezone): array {
             $fallbackUsed = filter_var($row['fallback_used'] ?? false, FILTER_VALIDATE_BOOLEAN);
             $handoffRequired = filter_var($row['handoff_required'] ?? false, FILTER_VALIDATE_BOOLEAN);
-            $hasApprovedSource = ((string) ($row['source_status'] ?? '')) === 'active'
-                && ((string) ($row['approval_state'] ?? '')) === 'approved'
+            $sourceStatus = Str::lower(trim((string) ($row['source_status'] ?? '')));
+            $approvalState = Str::lower(trim((string) ($row['approval_state'] ?? '')));
+            $hasApprovedSource = $sourceStatus === 'active'
+                && $approvalState === 'approved'
                 && (string) ($row['title'] ?? '') !== '';
             $isFallback = $fallbackUsed || $handoffRequired || ! $hasApprovedSource;
             $fallbackReason = $this->safeText($row['fallback_reason'] ?? 'source_missing');
@@ -316,6 +318,8 @@ class RealtimeOperationPresenter
 
     private function exceptions(array $rows, string $timezone): array
     {
+        $openRows = array_filter($rows, fn ($row): bool => is_array($row) && $this->isOpenException($row));
+
         $items = array_values(array_map(function (array $row) use ($timezone): array {
             $severity = Str::lower((string) ($row['severity'] ?? 'medium'));
             $reason = (string) ($row['exception_reason'] ?? $row['reason'] ?? 'missing_required_data');
@@ -341,7 +345,7 @@ class RealtimeOperationPresenter
                 'due_at' => $this->timeLabel($row['due_at'] ?? null, $timezone),
                 'trace' => $this->shortId((string) ($row['correlation_id'] ?? $row['linked_event_id'] ?? '')),
             ];
-        }, array_filter($rows, 'is_array')));
+        }, $openRows));
 
         return [
             'empty' => count($items) === 0,
@@ -545,6 +549,30 @@ class RealtimeOperationPresenter
         };
     }
 
+    private function scheduleRowStatus(array $row): string
+    {
+        $rowSyncStatus = Str::lower(trim((string) ($row['sync_status'] ?? SyncStatus::Fresh->value)));
+
+        if ($rowSyncStatus !== SyncStatus::Fresh->value) {
+            return 'failed_exception';
+        }
+
+        return Str::lower(trim((string) ($row['appointment_status'] ?? 'failed_exception')));
+    }
+
+    private function scheduleTimeRange(string $startsAt, string $endsAt): string
+    {
+        if ($startsAt === 'Sem timestamp') {
+            return 'Sem timestamp';
+        }
+
+        if ($endsAt === 'Sem timestamp') {
+            return $startsAt;
+        }
+
+        return $startsAt.' - '.Str::after($endsAt, ' ');
+    }
+
     private function scheduleResource(array $row): string
     {
         $room = $this->safeText($row['room_id'] ?? 'sala ausente');
@@ -608,12 +636,18 @@ class RealtimeOperationPresenter
 
     private function exceptionStatusLabel(string $value): string
     {
-        return match ($value) {
-            'claimed' => 'Assumida',
+        return match (Str::lower(trim($value))) {
+            'assigned' => 'Atribuida',
+            'in_progress' => 'Em andamento',
             'resolved' => 'Resolvida',
-            'closed' => 'Fechada',
+            'cancelled' => 'Cancelada',
             default => 'Aberta',
         };
+    }
+
+    private function isOpenException(array $row): bool
+    {
+        return in_array(Str::lower(trim((string) ($row['status'] ?? 'open'))), ['open', 'assigned', 'in_progress'], true);
     }
 
     private function slaImpactLabel(string $value): string
