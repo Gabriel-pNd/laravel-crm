@@ -57,6 +57,13 @@ it('renders the happy path demo chain without requiring external logs', function
 });
 
 it('renders mandatory exception scenarios as fail-closed or blocked states', function () {
+    $unknownTenant = renderDemoRunbookScenario('unknown_tenant');
+    expect($unknownTenant)->toContain('Estado canonico degradado');
+    expect($unknownTenant)->toContain('UNKNOWN_TENANT');
+    expect($unknownTenant)->not->toContain('lead_must_not_render_unknown_tenant');
+    expect($unknownTenant)->not->toContain('Agendamento confirmado');
+    expect($unknownTenant)->not->toContain('confirmado por projection fresca');
+
     $missingSsot = renderDemoRunbookScenario('missing_ssot');
     expect($missingSsot)->toContain('Fonte ausente');
     expect($missingSsot)->toContain('Handoff humano necessario');

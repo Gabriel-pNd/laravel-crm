@@ -697,6 +697,48 @@
       ],
       "updated_at": "2026-05-25T06:36:02Z"
     },
+    "unknown_tenant": {
+      "sync": {
+        "sync_status": "failed",
+        "last_success_at": null,
+        "last_error_code": "UNKNOWN_TENANT",
+        "lag_seconds": null,
+        "correlation_id": "corr_demo_unknown_tenant_0001",
+        "idempotency_key": "idem_demo_unknown_tenant_0001"
+      },
+      "pipeline": [
+        {
+          "clinic_id": "11111111-1111-4111-8111-111111111111",
+          "lead_id": "lead_must_not_render_unknown_tenant",
+          "conversation_id": "conv_must_not_render_unknown_tenant",
+          "conversation_status": "open",
+          "appointment_status": "confirmed"
+        }
+      ],
+      "timeline": [
+        {
+          "clinic_id": "11111111-1111-4111-8111-111111111111",
+          "timeline_event_id": "tl_must_not_render_unknown_tenant",
+          "event_type": "tenant_resolved",
+          "summary": "Este evento nao pode aparecer quando tenant desconhecido falha fechado.",
+          "occurred_at": "2026-05-25T06:37:02Z",
+          "actor_type": "system",
+          "source_system": "demo_mock",
+          "correlation_id": "corr_demo_unknown_tenant_0001"
+        }
+      ],
+      "agenda": [
+        {
+          "clinic_id": "11111111-1111-4111-8111-111111111111",
+          "appointment_id": "appt_must_not_render_unknown_tenant",
+          "appointment_status": "confirmed",
+          "starts_at": "2026-05-26T13:00:00Z"
+        }
+      ],
+      "evidence": [],
+      "exceptions": [],
+      "updated_at": null
+    },
     "crm_n8n_sync_failure": {
       "sync": {
         "sync_status": "stale",
