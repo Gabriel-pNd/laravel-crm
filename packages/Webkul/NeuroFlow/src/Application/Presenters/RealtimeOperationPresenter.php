@@ -15,6 +15,9 @@ class RealtimeOperationPresenter
         $isFresh = $syncStatus === SyncStatus::Fresh->value;
         $pipelineRows = $isFresh ? ($state['pipeline'] ?? []) : [];
         $timelineRows = $isFresh ? ($state['timeline'] ?? []) : [];
+        $scheduleRows = $isFresh ? ($state['agenda'] ?? []) : [];
+        $evidenceRows = $isFresh ? ($state['evidence'] ?? []) : [];
+        $exceptionRows = $isFresh ? ($state['exceptions'] ?? []) : [];
         $timezone = $this->timezone(data_get($state, 'clinic.timezone'));
         $focusRow = $this->focusRow($pipelineRows);
 
@@ -26,6 +29,9 @@ class RealtimeOperationPresenter
             'sla_card' => $this->slaCard($focusRow),
             'timeline' => $this->timeline($timelineRows, $timezone),
             'whatsapp_mirror' => $this->whatsappMirror($timelineRows, $timezone),
+            'schedule' => $this->schedule($scheduleRows, $timezone),
+            'evidence' => $this->evidence($evidenceRows, $timezone),
+            'exceptions' => $this->exceptions($exceptionRows, $timezone),
             'is_degraded' => ! $isFresh,
             'degraded_message' => $isFresh ? null : $this->degradedMessage($syncStatus),
         ];
@@ -241,6 +247,108 @@ class RealtimeOperationPresenter
         ];
     }
 
+    private function schedule(array $rows, string $clinicTimezone): array
+    {
+        $items = array_values(array_map(function (array $row) use ($clinicTimezone): array {
+            $status = Str::lower((string) ($row['appointment_status'] ?? 'failed_exception'));
+            $timezone = $this->timezone($row['timezone'] ?? $clinicTimezone);
+            $startsAt = $this->timeLabel($row['starts_at'] ?? null, $timezone);
+            $endsAt = $this->timeLabel($row['ends_at'] ?? null, $timezone);
+            $statusMeta = $this->scheduleStatus($status);
+
+            return [
+                'component' => 'CompactScheduleSlot',
+                'id' => $this->shortId((string) ($row['appointment_id'] ?? $row['slot_id'] ?? 'sem-id')),
+                'status' => $statusMeta['status'],
+                'status_label' => $statusMeta['label'],
+                'severity' => $statusMeta['severity'],
+                'confirmation_state' => $statusMeta['confirmation_state'],
+                'time_range' => $endsAt === 'Sem timestamp' ? $startsAt : $startsAt.' - '.Str::after($endsAt, ' '),
+                'timezone' => $timezone,
+                'resource_label' => $this->scheduleResource($row),
+                'duration_label' => $this->durationLabel($row['duration_minutes'] ?? null),
+                'trace' => $this->shortId((string) ($row['last_correlation_id'] ?? '')),
+            ];
+        }, array_filter($rows, 'is_array')));
+
+        return [
+            'empty' => count($items) === 0,
+            'items' => $items,
+        ];
+    }
+
+    private function evidence(array $rows, string $timezone): array
+    {
+        $items = array_values(array_map(function (array $row) use ($timezone): array {
+            $fallbackUsed = filter_var($row['fallback_used'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            $handoffRequired = filter_var($row['handoff_required'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            $hasApprovedSource = ((string) ($row['source_status'] ?? '')) === 'active'
+                && ((string) ($row['approval_state'] ?? '')) === 'approved'
+                && (string) ($row['title'] ?? '') !== '';
+            $isFallback = $fallbackUsed || $handoffRequired || ! $hasApprovedSource;
+            $fallbackReason = $this->safeText($row['fallback_reason'] ?? 'source_missing');
+
+            return [
+                'component' => 'EvidenceBadge',
+                'id' => $this->shortId((string) ($row['evidence_id'] ?? $row['source_id'] ?? 'sem-id')),
+                'title' => $this->safeText($row['title'] ?? 'Fonte ausente'),
+                'status' => $isFallback ? 'warning' : 'ok',
+                'status_label' => $isFallback ? 'Fonte ausente ou fallback' : 'Fonte aprovada',
+                'source_label' => trim($this->safeText($row['source_type'] ?? 'fonte').' · '.$this->safeText($row['source_status'] ?? 'status ausente'), ' ·'),
+                'approval_label' => $this->safeText($row['approval_state'] ?? 'aprovacao ausente'),
+                'version_label' => 'Versao '.$this->safeText($row['knowledge_version'] ?? $row['policy_version'] ?? 'indisponivel'),
+                'source_date_label' => $this->safeText($row['source_date'] ?? 'sem data'),
+                'reference_label' => 'Ref '.$this->safeText($row['cited_reference'] ?? 'ausente'),
+                'summary' => $this->safeText($row['safe_summary'] ?? 'Resumo seguro indisponivel'),
+                'support_label' => $this->safeText($row['confidence'] ?? 'confidence ausente').' · '.$this->safeText($row['support'] ?? 'support ausente'),
+                'policy_label' => $this->safeText($row['policy_version'] ?? 'sem policy').' · '.$this->safeText($row['rule_version'] ?? 'sem rule'),
+                'fallback_label' => $isFallback ? 'Fallback: '.$fallbackReason : 'Sem fallback',
+                'handoff_label' => $handoffRequired ? 'Handoff humano necessario' : 'Sem handoff',
+                'recorded_at' => $this->timeLabel($row['recorded_at'] ?? null, $timezone),
+            ];
+        }, array_filter($rows, 'is_array')));
+
+        return [
+            'empty' => count($items) === 0,
+            'items' => $items,
+        ];
+    }
+
+    private function exceptions(array $rows, string $timezone): array
+    {
+        $items = array_values(array_map(function (array $row) use ($timezone): array {
+            $severity = Str::lower((string) ($row['severity'] ?? 'medium'));
+            $reason = (string) ($row['exception_reason'] ?? $row['reason'] ?? 'missing_required_data');
+
+            return [
+                'component' => 'HumanExceptionCard',
+                'id' => $this->shortId((string) ($row['human_escalation_id'] ?? 'sem-id')),
+                'reason' => $reason,
+                'reason_label' => $this->exceptionReasonLabel($reason),
+                'severity' => $severity,
+                'severity_label' => $this->severityLabel($severity),
+                'severity_status' => $this->severityStatus($severity),
+                'status_label' => $this->exceptionStatusLabel((string) ($row['status'] ?? 'open')),
+                'automation_state' => $this->safeText($row['automation_state'] ?? 'estado ausente'),
+                'affected_entity' => $this->safeText($row['affected_entity_type'] ?? 'entidade nao informada'),
+                'summary' => $this->safeText($row['safe_summary'] ?? 'Resumo seguro indisponivel'),
+                'suggested_action' => $this->safeText($row['suggested_action'] ?? 'Sem acao sugerida'),
+                'sla_label' => $this->slaImpactLabel((string) ($row['sla_impact'] ?? 'not_applicable')),
+                'owner_label' => $this->ownerLabel($row),
+                'created_at' => $this->timeLabel($row['created_at'] ?? null, $timezone),
+                'claimed_at' => $this->timeLabel($row['claimed_at'] ?? null, $timezone),
+                'resolved_at' => $this->timeLabel($row['resolved_at'] ?? null, $timezone),
+                'due_at' => $this->timeLabel($row['due_at'] ?? null, $timezone),
+                'trace' => $this->shortId((string) ($row['correlation_id'] ?? $row['linked_event_id'] ?? '')),
+            ];
+        }, array_filter($rows, 'is_array')));
+
+        return [
+            'empty' => count($items) === 0,
+            'items' => $items,
+        ];
+    }
+
     private function stageFor(array $row): PipelineStage
     {
         $qualification = Str::lower((string) ($row['qualification_status'] ?? 'not_started'));
@@ -393,6 +501,137 @@ class RealtimeOperationPresenter
         }
 
         return 'registrado';
+    }
+
+    private function scheduleStatus(string $value): array
+    {
+        return match ($value) {
+            'offered' => [
+                'status' => 'offered',
+                'label' => 'Oferecido',
+                'severity' => 'empty',
+                'confirmation_state' => 'horario oferecido, nao confirmado',
+            ],
+            'pending_confirmation' => [
+                'status' => 'pending_confirmation',
+                'label' => 'Pendente',
+                'severity' => 'warning',
+                'confirmation_state' => 'reserva pendente de resposta',
+            ],
+            'confirmed' => [
+                'status' => 'confirmed',
+                'label' => 'Confirmado',
+                'severity' => 'ok',
+                'confirmation_state' => 'confirmado por projection fresca',
+            ],
+            'reschedule_requested' => [
+                'status' => 'reschedule_requested',
+                'label' => 'Remarcacao solicitada',
+                'severity' => 'warning',
+                'confirmation_state' => 'precisa de acao humana',
+            ],
+            'cancelled' => [
+                'status' => 'cancelled',
+                'label' => 'Cancelado',
+                'severity' => 'empty',
+                'confirmation_state' => 'slot nao confirmado',
+            ],
+            default => [
+                'status' => 'failed_exception',
+                'label' => 'Falha ou conflito',
+                'severity' => 'breached',
+                'confirmation_state' => 'resultado tecnico ou excecao',
+            ],
+        };
+    }
+
+    private function scheduleResource(array $row): string
+    {
+        $room = $this->safeText($row['room_id'] ?? 'sala ausente');
+        $professional = $this->safeText($row['professional_id'] ?? 'profissional ausente');
+
+        return 'Sala '.$room.' · Profissional '.$professional;
+    }
+
+    private function durationLabel(mixed $value): string
+    {
+        if (! is_numeric($value) || (int) $value <= 0) {
+            return 'Duracao nao informada';
+        }
+
+        return (int) $value.' min';
+    }
+
+    private function exceptionReasonLabel(string $value): string
+    {
+        return match ($value) {
+            'unknown_tenant' => 'Tenant desconhecido',
+            'duplicate_or_ambiguous_tenant' => 'Tenant ambiguo',
+            'missing_required_data' => 'Dados obrigatorios ausentes',
+            'out_of_scope' => 'Fora de escopo',
+            'low_confidence' => 'Baixa confianca',
+            'source_missing' => 'Fonte ausente',
+            'clinical_limit' => 'Limite clinico',
+            'schedule_unavailable' => 'Agenda indisponivel',
+            'booking_conflict' => 'Conflito de agenda',
+            'delivery_failed' => 'Falha de entrega',
+            'crm_sync_failed' => 'Falha de sync CRM',
+            'workflow_timeout' => 'Timeout de workflow',
+            'lgpd_risk' => 'Risco LGPD',
+            'opt_out' => 'Opt-out',
+            'ambiguous_intent' => 'Intencao ambigua',
+            'policy_blocked' => 'Bloqueio de politica',
+            'contact_conflict' => 'Conflito de contato',
+            'technical_failure' => 'Falha tecnica',
+            default => Str::headline(str_replace('_', ' ', $value)),
+        };
+    }
+
+    private function severityLabel(string $value): string
+    {
+        return match ($value) {
+            'critical' => 'Critica',
+            'high' => 'Alta',
+            'low' => 'Baixa',
+            default => 'Media',
+        };
+    }
+
+    private function severityStatus(string $value): string
+    {
+        return match ($value) {
+            'critical', 'high' => 'breached',
+            'low' => 'empty',
+            default => 'warning',
+        };
+    }
+
+    private function exceptionStatusLabel(string $value): string
+    {
+        return match ($value) {
+            'claimed' => 'Assumida',
+            'resolved' => 'Resolvida',
+            'closed' => 'Fechada',
+            default => 'Aberta',
+        };
+    }
+
+    private function slaImpactLabel(string $value): string
+    {
+        return match ($value) {
+            'breached' => 'SLA violado',
+            'at_risk' => 'SLA em risco',
+            'within_target' => 'SLA ok',
+            default => 'SLA nao aplicavel',
+        };
+    }
+
+    private function ownerLabel(array $row): string
+    {
+        $role = $this->safeText($row['owner_role'] ?? 'sem dono');
+        $user = $this->safeText($row['owner_user_id'] ?? '');
+
+        return $user === '' ? 'Responsavel: '.$role : 'Responsavel: '.$role.' · '.$user;
     }
 
     private function hasEvidenceMarker(array $row): bool

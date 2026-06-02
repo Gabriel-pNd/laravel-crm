@@ -162,12 +162,148 @@ it('hides operational rows when sync is degraded', function () {
             'event_type' => 'appointment_booked',
             'summary' => 'Agendamento confirmado',
         ]],
+        'agenda' => [[
+            'appointment_id' => 'appt-stale',
+            'appointment_status' => 'confirmed',
+            'starts_at' => '2026-06-03T13:00:00Z',
+        ]],
+        'evidence' => [[
+            'evidence_id' => 'evidence-stale',
+            'title' => 'Fonte aprovada',
+            'source_status' => 'active',
+        ]],
+        'exceptions' => [[
+            'human_escalation_id' => 'exc-stale',
+            'exception_reason' => 'booking_conflict',
+            'status' => 'resolved',
+        ]],
     ]));
 
     expect($presented['is_degraded'])->toBeTrue();
     expect(collect($presented['pipeline_columns'])->sum(fn ($column) => count($column['items'])))->toBe(0);
     expect($presented['timeline'])->toBe([]);
+    expect($presented['schedule']['items'])->toBe([]);
+    expect($presented['evidence']['items'])->toBe([]);
+    expect($presented['exceptions']['items'])->toBe([]);
     expect($presented['lead_summary']['empty'])->toBeTrue();
+});
+
+it('presents schedule slots with canonical status, timezone labels and honest confirmation state', function () {
+    $presented = app(RealtimeOperationPresenter::class)->present(freshRealtimeState([
+        'clinic' => [
+            'id' => '11111111-1111-4111-8111-111111111111',
+            'name' => 'Clinica Manaus',
+            'timezone' => 'America/Manaus',
+        ],
+        'agenda' => [
+            [
+                'appointment_id' => 'appt-confirmed-123456789',
+                'slot_id' => 'slot-1',
+                'professional_id' => 'prof-1',
+                'room_id' => 'room-1',
+                'duration_minutes' => 50,
+                'starts_at' => '2026-06-03T13:00:00Z',
+                'ends_at' => '2026-06-03T13:50:00Z',
+                'timezone' => 'America/Manaus',
+                'appointment_status' => 'confirmed',
+                'last_correlation_id' => 'corr-schedule-123456789',
+            ],
+            [
+                'appointment_id' => 'appt-failed',
+                'appointment_status' => 'failed_exception',
+                'starts_at' => 'not-a-date',
+                'sync_status' => 'fresh',
+            ],
+        ],
+    ]));
+
+    expect($presented['schedule']['items'])->toHaveCount(2);
+    expect($presented['schedule']['items'][0]['component'])->toBe('CompactScheduleSlot');
+    expect($presented['schedule']['items'][0]['status_label'])->toBe('Confirmado');
+    expect($presented['schedule']['items'][0]['confirmation_state'])->toBe('confirmado por projection fresca');
+    expect($presented['schedule']['items'][0]['time_range'])->toBe('03/06/2026 09:00 - 09:50');
+    expect($presented['schedule']['items'][0]['resource_label'])->toBe('Sala room-1 · Profissional prof-1');
+    expect($presented['schedule']['items'][0]['trace'])->toBe('corr-sch...6789');
+    expect($presented['schedule']['items'][1]['status_label'])->toBe('Falha ou conflito');
+    expect($presented['schedule']['items'][1]['severity'])->toBe('breached');
+    expect($presented['schedule']['items'][1]['time_range'])->toBe('Sem timestamp');
+});
+
+it('presents evidence badges and drawer data without leaking non allowlisted fields', function () {
+    $presented = app(RealtimeOperationPresenter::class)->present(freshRealtimeState([
+        'evidence' => [
+            [
+                'evidence_id' => 'evidence-approved-123456789',
+                'title' => 'Horario de funcionamento',
+                'source_type' => 'faq',
+                'source_status' => 'active',
+                'approval_state' => 'approved',
+                'knowledge_version' => 'kv-2026-06',
+                'source_date' => '2026-06-01',
+                'cited_reference' => 'FAQ-12',
+                'safe_summary' => 'Resposta enviada com fonte aprovada.',
+                'confidence' => 'high',
+                'support' => 'supported',
+                'policy_version' => 'policy-v1',
+                'rule_version' => 'rule-v1',
+                'fallback_used' => false,
+                'handoff_required' => false,
+                'recorded_at' => '2026-06-02T12:30:00Z',
+                'prompt' => 'nao pode aparecer',
+                'raw_payload' => ['secret' => true],
+            ],
+            [
+                'evidence_id' => 'evidence-missing',
+                'fallback_used' => true,
+                'fallback_reason' => 'source_missing',
+                'handoff_required' => true,
+            ],
+        ],
+    ]));
+
+    expect($presented['evidence']['items'])->toHaveCount(2);
+    expect($presented['evidence']['items'][0]['component'])->toBe('EvidenceBadge');
+    expect($presented['evidence']['items'][0]['title'])->toBe('Horario de funcionamento');
+    expect($presented['evidence']['items'][0]['status_label'])->toBe('Fonte aprovada');
+    expect($presented['evidence']['items'][0]['reference_label'])->toBe('Ref FAQ-12');
+    expect($presented['evidence']['items'][0]['support_label'])->toBe('high · supported');
+    expect($presented['evidence']['items'][0])->not->toHaveKeys(['prompt', 'raw_payload']);
+    expect($presented['evidence']['items'][1]['status_label'])->toBe('Fonte ausente ou fallback');
+    expect($presented['evidence']['items'][1]['fallback_label'])->toBe('Fallback: source_missing');
+    expect($presented['evidence']['items'][1]['handoff_label'])->toBe('Handoff humano necessario');
+});
+
+it('presents human exception cards with reason severity SLA owner and trace', function () {
+    $presented = app(RealtimeOperationPresenter::class)->present(freshRealtimeState([
+        'exceptions' => [
+            [
+                'human_escalation_id' => 'exc-booking-123456789',
+                'severity' => 'high',
+                'exception_reason' => 'booking_conflict',
+                'status' => 'open',
+                'automation_state' => 'pausada',
+                'affected_entity_type' => 'appointment',
+                'safe_summary' => 'Conflito de sala detectado.',
+                'suggested_action' => 'Revisar slot e contatar responsavel.',
+                'sla_impact' => 'breached',
+                'owner_role' => 'receptionist',
+                'owner_user_id' => 'user-1',
+                'created_at' => '2026-06-02T12:10:00Z',
+                'due_at' => '2026-06-02T12:20:00Z',
+                'correlation_id' => 'corr-exception-123456789',
+                'stack_trace' => 'nao pode aparecer',
+            ],
+        ],
+    ]));
+
+    expect($presented['exceptions']['items'])->toHaveCount(1);
+    expect($presented['exceptions']['items'][0]['component'])->toBe('HumanExceptionCard');
+    expect($presented['exceptions']['items'][0]['reason_label'])->toBe('Conflito de agenda');
+    expect($presented['exceptions']['items'][0]['severity_label'])->toBe('Alta');
+    expect($presented['exceptions']['items'][0]['sla_label'])->toBe('SLA violado');
+    expect($presented['exceptions']['items'][0]['owner_label'])->toBe('Responsavel: receptionist · user-1');
+    expect($presented['exceptions']['items'][0]['trace'])->toBe('corr-exc...6789');
+    expect($presented['exceptions']['items'][0])->not->toHaveKey('stack_trace');
 });
 
 it('builds timeline and WhatsApp mirror from UI-safe timeline events', function () {
@@ -309,4 +445,54 @@ it('renders the cockpit view with operational data and masked references', funct
     expect($view)->toContain('WhatsApp conversation mirror');
     expect($view)->toContain('Lead lead-view');
     expect($view)->toContain('Ref wa-***-123');
+});
+
+it('renders schedule evidence and exception components with accessible labels', function () {
+    test()->actingAs(getDefaultAdmin(), 'user');
+    view()->share('errors', new \Illuminate\Support\ViewErrorBag);
+
+    $cockpit = app(RealtimeOperationPresenter::class)->present(freshRealtimeState([
+        'agenda' => [[
+            'appointment_id' => 'appt-view',
+            'appointment_status' => 'pending_confirmation',
+            'professional_id' => 'prof-view',
+            'room_id' => 'room-view',
+            'starts_at' => '2026-06-03T13:00:00Z',
+            'ends_at' => '2026-06-03T13:50:00Z',
+        ]],
+        'evidence' => [[
+            'evidence_id' => 'evidence-view',
+            'title' => 'Fonte demo',
+            'approval_state' => 'approved',
+            'source_status' => 'active',
+            'cited_reference' => 'FAQ-12',
+            'safe_summary' => 'Resumo seguro de evidencia.',
+            'confidence' => 'high',
+            'support' => 'supported',
+        ]],
+        'exceptions' => [[
+            'human_escalation_id' => 'exception-view',
+            'exception_reason' => 'source_missing',
+            'severity' => 'medium',
+            'status' => 'open',
+            'safe_summary' => 'Fonte ausente para responder.',
+            'suggested_action' => 'Validar fonte com coordencao.',
+            'sla_impact' => 'at_risk',
+            'owner_role' => 'manager_coordinator',
+        ]],
+    ]));
+
+    $view = view('neuroflow::realtime-operation.index', [
+        'cockpit' => $cockpit,
+        'desktopMinWidth' => 1024,
+    ])->render();
+
+    expect($view)->toContain('CompactScheduleSlot');
+    expect($view)->toContain('EvidenceBadge');
+    expect($view)->toContain('EvidenceDrawer');
+    expect($view)->toContain('HumanExceptionCard');
+    expect($view)->toContain('aria-expanded');
+    expect($view)->toContain('aria-controls');
+    expect($view)->toContain('Resumo seguro de evidencia.');
+    expect($view)->toContain('Fonte ausente para responder.');
 });

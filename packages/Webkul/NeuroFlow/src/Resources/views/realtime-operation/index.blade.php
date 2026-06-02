@@ -113,6 +113,136 @@
             </article>
         </section>
 
+        <section class="grid gap-4 xl:grid-cols-[minmax(320px,0.85fr)_minmax(360px,1fr)_minmax(320px,0.85fr)]" aria-label="agenda evidencia excecoes">
+            <article class="rounded border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900" aria-label="CompactScheduleSlot">
+                <div class="flex items-center justify-between gap-3">
+                    <h2 class="text-base font-semibold text-gray-900 dark:text-white">Agenda</h2>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">{{ count($cockpit['schedule']['items']) }} slots</span>
+                </div>
+
+                <div class="mt-4 space-y-3">
+                    @forelse ($cockpit['schedule']['items'] as $slot)
+                        <article tabindex="0" class="rounded border border-gray-200 p-3 text-sm outline-none dark:border-gray-800" aria-label="CompactScheduleSlot {{ $slot['status_label'] }} {{ $slot['time_range'] }}">
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <h3 class="font-semibold text-gray-900 dark:text-white">{{ $slot['time_range'] }}</h3>
+                                <span class="rounded border px-2 py-1 text-xs font-medium {{ $statusClasses[$slot['severity']] ?? $statusClasses['empty'] }}">
+                                    {{ $slot['status_label'] }}
+                                </span>
+                            </div>
+                            <p class="mt-2 text-gray-600 dark:text-gray-300">{{ $slot['resource_label'] }}</p>
+                            <div class="mt-3 flex flex-wrap gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
+                                <span class="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">{{ $slot['duration_label'] }}</span>
+                                <span class="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">{{ $slot['timezone'] }}</span>
+                                <span class="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">{{ $slot['confirmation_state'] }}</span>
+                                <span class="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">Trace {{ $slot['trace'] }}</span>
+                            </div>
+                        </article>
+                    @empty
+                        <p class="rounded border border-dashed border-gray-200 p-4 text-sm text-gray-500 dark:border-gray-800 dark:text-gray-400">
+                            Nenhum slot fresco. Dados degradados nao sustentam confirmacao visual.
+                        </p>
+                    @endforelse
+                </div>
+            </article>
+
+            <article class="rounded border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900" aria-label="EvidenceBadge EvidenceDrawer">
+                <div class="flex items-center justify-between gap-3">
+                    <h2 class="text-base font-semibold text-gray-900 dark:text-white">Evidencias</h2>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">{{ count($cockpit['evidence']['items']) }} fontes</span>
+                </div>
+
+                <div class="mt-4 space-y-3">
+                    @forelse ($cockpit['evidence']['items'] as $index => $evidence)
+                        @php
+                            $drawerId = 'evidence-drawer-'.$index.'-'.$evidence['id'];
+                        @endphp
+                        <article class="rounded border border-gray-200 p-3 text-sm dark:border-gray-800" aria-label="EvidenceBadge {{ $evidence['status_label'] }}">
+                            <div class="flex flex-wrap items-start justify-between gap-2">
+                                <div>
+                                    <h3 class="font-semibold text-gray-900 dark:text-white">{{ $evidence['title'] }}</h3>
+                                    <p class="mt-1 text-gray-600 dark:text-gray-300">{{ $evidence['reference_label'] }} · {{ $evidence['support_label'] }}</p>
+                                </div>
+                                <span class="rounded border px-2 py-1 text-xs font-medium {{ $statusClasses[$evidence['status']] ?? $statusClasses['empty'] }}">
+                                    {{ $evidence['status_label'] }}
+                                </span>
+                            </div>
+
+                            <button type="button" class="neuroflow-drawer-toggle mt-3 rounded border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 outline-none dark:border-gray-700 dark:text-gray-200" aria-expanded="false" aria-controls="{{ $drawerId }}">
+                                Detalhes da evidencia
+                            </button>
+
+                            <div id="{{ $drawerId }}" class="neuroflow-drawer mt-3 hidden rounded border border-gray-200 bg-gray-50 p-3 text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-200" role="region" aria-label="EvidenceDrawer {{ $evidence['title'] }}">
+                                <dl class="grid gap-2 sm:grid-cols-2">
+                                    <div>
+                                        <dt class="font-medium text-gray-900 dark:text-white">Fonte</dt>
+                                        <dd>{{ $evidence['source_label'] }} · {{ $evidence['approval_label'] }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="font-medium text-gray-900 dark:text-white">Versao/data</dt>
+                                        <dd>{{ $evidence['version_label'] }} · {{ $evidence['source_date_label'] }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="font-medium text-gray-900 dark:text-white">Politica</dt>
+                                        <dd>{{ $evidence['policy_label'] }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="font-medium text-gray-900 dark:text-white">Registro</dt>
+                                        <dd>{{ $evidence['recorded_at'] }}</dd>
+                                    </div>
+                                </dl>
+                                <p class="mt-3">{{ $evidence['summary'] }}</p>
+                                <div class="mt-3 flex flex-wrap gap-2 text-xs font-medium">
+                                    <span class="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">{{ $evidence['fallback_label'] }}</span>
+                                    <span class="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">{{ $evidence['handoff_label'] }}</span>
+                                </div>
+                            </div>
+                        </article>
+                    @empty
+                        <p class="rounded border border-dashed border-gray-200 p-4 text-sm text-gray-500 dark:border-gray-800 dark:text-gray-400">
+                            Fonte ausente como estado explicito. Nenhuma evidencia confiavel aparece sem projection fresca.
+                        </p>
+                    @endforelse
+                </div>
+            </article>
+
+            <article class="rounded border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900" aria-label="HumanExceptionCard">
+                <div class="flex items-center justify-between gap-3">
+                    <h2 class="text-base font-semibold text-gray-900 dark:text-white">Excecoes Humanas</h2>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">{{ count($cockpit['exceptions']['items']) }} abertas</span>
+                </div>
+
+                <div class="mt-4 space-y-3">
+                    @forelse ($cockpit['exceptions']['items'] as $exception)
+                        <article tabindex="0" class="rounded border border-gray-200 p-3 text-sm outline-none dark:border-gray-800" aria-label="HumanExceptionCard {{ $exception['reason_label'] }} {{ $exception['severity_label'] }}">
+                            <div class="flex flex-wrap items-start justify-between gap-2">
+                                <div>
+                                    <h3 class="font-semibold text-gray-900 dark:text-white">{{ $exception['reason_label'] }}</h3>
+                                    <p class="mt-1 text-gray-600 dark:text-gray-300">{{ $exception['summary'] }}</p>
+                                </div>
+                                <span class="rounded border px-2 py-1 text-xs font-medium {{ $statusClasses[$exception['severity_status']] ?? $statusClasses['warning'] }}">
+                                    {{ $exception['severity_label'] }}
+                                </span>
+                            </div>
+                            <p class="mt-3 text-gray-700 dark:text-gray-200">{{ $exception['suggested_action'] }}</p>
+                            <div class="mt-3 flex flex-wrap gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
+                                <span class="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">{{ $exception['status_label'] }}</span>
+                                <span class="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">{{ $exception['automation_state'] }}</span>
+                                <span class="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">{{ $exception['sla_label'] }}</span>
+                                <span class="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">{{ $exception['owner_label'] }}</span>
+                                <span class="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">Criada {{ $exception['created_at'] }}</span>
+                                <span class="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">Vence {{ $exception['due_at'] }}</span>
+                                <span class="rounded border border-gray-200 px-2 py-1 dark:border-gray-800">Trace {{ $exception['trace'] }}</span>
+                            </div>
+                        </article>
+                    @empty
+                        <p class="rounded border border-dashed border-gray-200 p-4 text-sm text-gray-500 dark:border-gray-800 dark:text-gray-400">
+                            Nenhuma excecao fresca. Projection degradada nao mostra resolucao como sucesso.
+                        </p>
+                    @endforelse
+                </div>
+            </article>
+        </section>
+
         <section class="rounded border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
             <div class="flex items-center justify-between gap-3">
                 <h2 class="text-base font-semibold text-gray-900 dark:text-white">Funil de Leads</h2>
@@ -211,6 +341,11 @@
                 display: none;
             }
 
+            .neuroflow-cockpit :is(button, [tabindex="0"], summary, a):focus-visible {
+                outline: 3px solid #2563eb;
+                outline-offset: 2px;
+            }
+
             @media (max-width: {{ $desktopMinWidth - 1 }}px) {
                 .neuroflow-cockpit {
                     min-width: 0;
@@ -221,5 +356,27 @@
                 }
             }
         </style>
+    @endpush
+
+    @push('scripts')
+        <script>
+            document.addEventListener('click', function (event) {
+                const button = event.target.closest('.neuroflow-drawer-toggle');
+
+                if (! button) {
+                    return;
+                }
+
+                const drawer = document.getElementById(button.getAttribute('aria-controls'));
+
+                if (! drawer) {
+                    return;
+                }
+
+                const expanded = button.getAttribute('aria-expanded') === 'true';
+                button.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+                drawer.classList.toggle('hidden', expanded);
+            });
+        </script>
     @endpush
 </x-admin::layouts>
