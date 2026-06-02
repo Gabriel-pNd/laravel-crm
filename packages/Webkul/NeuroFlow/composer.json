@@ -1,0 +1,10 @@
+{
+    "name": "webkul/neuroflow",
+    "description": "NeuroFlow cockpit package for Krayin CRM.",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "Webkul\\NeuroFlow\\": "src/"
+        }
+    }
+}

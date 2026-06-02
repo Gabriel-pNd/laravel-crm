@@ -8,7 +8,7 @@ return [
         'key' => 'dashboard',
         'name' => 'admin::app.layouts.dashboard',
         'route' => 'admin.dashboard.index',
-        'sort' => 1,
+        'sort' => 90,
         'icon-class' => 'icon-dashboard',
     ],
 
@@ -19,7 +19,7 @@ return [
         'key' => 'leads',
         'name' => 'admin::app.layouts.leads',
         'route' => 'admin.leads.index',
-        'sort' => 2,
+        'sort' => 30,
         'icon-class' => 'icon-leads',
     ],
 
@@ -30,7 +30,7 @@ return [
         'key' => 'quotes',
         'name' => 'admin::app.layouts.quotes',
         'route' => 'admin.quotes.index',
-        'sort' => 3,
+        'sort' => 130,
         'icon-class' => 'icon-quote',
     ],
 
@@ -42,7 +42,7 @@ return [
         'name' => 'admin::app.layouts.mail.title',
         'route' => 'admin.mail.index',
         'params' => ['route' => 'inbox'],
-        'sort' => 4,
+        'sort' => 140,
         'icon-class' => 'icon-mail',
     ], [
         'key' => 'mail.inbox',
@@ -88,7 +88,7 @@ return [
         'key' => 'activities',
         'name' => 'admin::app.layouts.activities',
         'route' => 'admin.activities.index',
-        'sort' => 5,
+        'sort' => 150,
         'icon-class' => 'icon-activity',
     ],
 
@@ -99,7 +99,7 @@ return [
         'key' => 'contacts',
         'name' => 'admin::app.layouts.contacts',
         'route' => 'admin.contacts.persons.index',
-        'sort' => 6,
+        'sort' => 40,
         'icon-class' => 'icon-contact',
     ], [
         'key' => 'contacts.persons',
@@ -122,7 +122,7 @@ return [
         'key' => 'products',
         'name' => 'admin::app.layouts.products',
         'route' => 'admin.products.index',
-        'sort' => 7,
+        'sort' => 160,
         'icon-class' => 'icon-product',
     ],
 
@@ -133,7 +133,7 @@ return [
         'key' => 'settings',
         'name' => 'admin::app.layouts.settings',
         'route' => 'admin.settings.index',
-        'sort' => 8,
+        'sort' => 80,
         'icon-class' => 'icon-setting',
     ], [
         'key' => 'settings.user',

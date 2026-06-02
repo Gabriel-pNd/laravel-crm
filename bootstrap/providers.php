@@ -17,6 +17,7 @@ use Webkul\EmailTemplate\Providers\EmailTemplateServiceProvider;
 use Webkul\Installer\Providers\InstallerServiceProvider;
 use Webkul\Lead\Providers\LeadServiceProvider;
 use Webkul\Marketing\Providers\MarketingServiceProvider;
+use Webkul\NeuroFlow\Providers\NeuroFlowServiceProvider;
 use Webkul\Product\Providers\ProductServiceProvider;
 use Webkul\Quote\Providers\QuoteServiceProvider;
 use Webkul\Tag\Providers\TagServiceProvider;
@@ -51,6 +52,7 @@ return [
     EmailTemplateServiceProvider::class,
     EmailServiceProvider::class,
     MarketingServiceProvider::class,
+    NeuroFlowServiceProvider::class,
     InstallerServiceProvider::class,
     LeadServiceProvider::class,
     ProductServiceProvider::class,
