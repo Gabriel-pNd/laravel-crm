@@ -1,0 +1,440 @@
+{
+  "schema_version": "laravel.crm.realtime-operation-demo-fixture.v1",
+  "derived_from": "../../../docs/contracts/v1/fixtures/demo-mode-fixtures.v1.json",
+  "states": {
+    "happy_path": {
+      "sync": {
+        "sync_status": "fresh",
+        "last_success_at": "2026-05-25T06:40:00Z",
+        "lag_seconds": 0,
+        "correlation_id": "corr_demo_happy_0001",
+        "idempotency_key": "idem_demo_book_happy_0001"
+      },
+      "pipeline": [
+        {
+          "clinic_id": "11111111-1111-4111-8111-111111111111",
+          "contact_id": "contact_demo_lead_0001",
+          "lead_id": "lead_demo_happy_0001",
+          "conversation_id": "conv_demo_happy_0001",
+          "classification": "new_lead",
+          "qualification_status": "complete",
+          "conversation_status": "booked",
+          "next_action": "Demo mock: revisar resumo operacional e acompanhar excecoes abertas.",
+          "sla_status": "within_target",
+          "sla_target_seconds": 120,
+          "sla_elapsed_seconds": 37,
+          "first_response_at": "2026-05-25T06:30:03Z",
+          "first_response_due_at": "2026-05-25T06:32:00Z",
+          "delivery_status": "sent",
+          "last_workflow_run_id": "wf_demo_happy_0001",
+          "appointment_status": "confirmed",
+          "visual_substate": "demo_mock_confirmed",
+          "last_correlation_id": "corr_demo_happy_0001",
+          "updated_at": "2026-05-25T06:40:00Z"
+        },
+        {
+          "clinic_id": "11111111-1111-4111-8111-111111111111",
+          "contact_id": "contact_demo_lead_0001",
+          "lead_id": "lead_demo_ssot_missing_0001",
+          "conversation_id": "conv_demo_ssot_missing_0001",
+          "classification": "existing_lead",
+          "qualification_status": "needs_human",
+          "conversation_status": "escalated",
+          "next_action": "Handoff humano por fonte SSOT ausente.",
+          "sla_status": "at_risk",
+          "sla_target_seconds": 120,
+          "sla_elapsed_seconds": 96,
+          "delivery_status": "exception_recorded",
+          "last_workflow_run_id": "wf_demo_happy_0001",
+          "appointment_status": "failed_exception",
+          "visual_substate": "exception_review",
+          "last_correlation_id": "corr_demo_ssot_missing_0001",
+          "updated_at": "2026-05-25T06:40:00Z"
+        }
+      ],
+      "timeline": [
+        {
+          "clinic_id": "11111111-1111-4111-8111-111111111111",
+          "timeline_event_id": "tl_demo_message_received_0001",
+          "contact_id": "contact_demo_lead_0001",
+          "conversation_id": "conv_demo_happy_0001",
+          "lead_id": "lead_demo_happy_0001",
+          "event_type": "message_received",
+          "summary": "Mensagem demo recebida pelo WhatsApp mock.",
+          "occurred_at": "2026-05-25T06:30:00Z",
+          "actor_type": "contact",
+          "source_system": "whatsapp_demo_mock",
+          "correlation_id": "corr_demo_happy_0001",
+          "masked_external_ref": "wa-demo-***-0001"
+        },
+        {
+          "clinic_id": "11111111-1111-4111-8111-111111111111",
+          "timeline_event_id": "tl_demo_happy_0001",
+          "contact_id": "contact_demo_lead_0001",
+          "conversation_id": "conv_demo_happy_0001",
+          "lead_id": "lead_demo_happy_0001",
+          "appointment_id": "appt_demo_happy_0001",
+          "event_type": "appointment_booked",
+          "summary": "Agendamento demo confirmado por projection local.",
+          "occurred_at": "2026-05-25T06:30:03Z",
+          "actor_type": "automation",
+          "source_system": "demo_mock",
+          "correlation_id": "corr_demo_happy_0001",
+          "masked_external_ref": "mock://raw-payloads/msg_demo_happy_0001"
+        },
+        {
+          "clinic_id": "11111111-1111-4111-8111-111111111111",
+          "timeline_event_id": "tl_demo_slot_conflict_0001",
+          "contact_id": "contact_demo_lead_0001",
+          "conversation_id": "conv_demo_happy_0001",
+          "lead_id": "lead_demo_happy_0001",
+          "appointment_id": "appt_demo_conflict_0001",
+          "event_type": "booking_conflict_detected",
+          "summary": "Tentativa demo bloqueada por slot ocupado.",
+          "occurred_at": "2026-05-25T06:36:02Z",
+          "actor_type": "system",
+          "source_system": "demo_mock",
+          "correlation_id": "corr_demo_slot_conflict_0001"
+        },
+        {
+          "clinic_id": "11111111-1111-4111-8111-111111111111",
+          "timeline_event_id": "tl_demo_ssot_missing_0001",
+          "contact_id": "contact_demo_lead_0001",
+          "conversation_id": "conv_demo_ssot_missing_0001",
+          "lead_id": "lead_demo_ssot_missing_0001",
+          "event_type": "human_escalation_created",
+          "summary": "Fonte SSOT ausente gerou excecao humana demo.",
+          "occurred_at": "2026-05-25T06:35:02Z",
+          "actor_type": "automation",
+          "source_system": "demo_mock",
+          "correlation_id": "corr_demo_ssot_missing_0001"
+        }
+      ],
+      "agenda": [
+        {
+          "clinic_id": "11111111-1111-4111-8111-111111111111",
+          "appointment_id": "appt_demo_happy_0001",
+          "slot_id": "slot_demo_available_0001",
+          "professional_id": "prof_demo_ana_0001",
+          "room_id": "room_demo_001",
+          "service_id": "33333333-3333-4333-8333-333333333333",
+          "duration_minutes": 60,
+          "starts_at": "2026-05-26T13:00:00Z",
+          "ends_at": "2026-05-26T14:00:00Z",
+          "timezone": "America/Sao_Paulo",
+          "appointment_status": "confirmed",
+          "booking_source": "demo_mock",
+          "contact_id": "contact_demo_lead_0001",
+          "lead_id": "lead_demo_happy_0001",
+          "sync_status": "fresh",
+          "last_correlation_id": "corr_demo_happy_0001"
+        },
+        {
+          "clinic_id": "11111111-1111-4111-8111-111111111111",
+          "appointment_id": "appt_demo_pending_0001",
+          "slot_id": "slot_demo_available_0002",
+          "professional_id": "prof_demo_bia_0001",
+          "room_id": "room_demo_002",
+          "service_id": "44444444-4444-4444-8444-444444444444",
+          "duration_minutes": 45,
+          "starts_at": "2026-05-27T13:00:00Z",
+          "ends_at": "2026-05-27T13:45:00Z",
+          "timezone": "America/Sao_Paulo",
+          "appointment_status": "pending_confirmation",
+          "booking_source": "demo_mock",
+          "contact_id": "contact_demo_lead_0001",
+          "lead_id": "lead_demo_happy_0001",
+          "sync_status": "fresh",
+          "last_correlation_id": "corr_demo_booking_timeout_0001"
+        },
+        {
+          "clinic_id": "11111111-1111-4111-8111-111111111111",
+          "appointment_id": "appt_demo_conflict_0001",
+          "slot_id": "slot_demo_taken_0001",
+          "professional_id": "prof_demo_ana_0001",
+          "room_id": "room_demo_001",
+          "service_id": "33333333-3333-4333-8333-333333333333",
+          "duration_minutes": 60,
+          "starts_at": "2026-05-26T14:00:00Z",
+          "ends_at": "2026-05-26T15:00:00Z",
+          "timezone": "America/Sao_Paulo",
+          "appointment_status": "failed_exception",
+          "booking_source": "demo_mock",
+          "contact_id": "contact_demo_lead_0001",
+          "lead_id": "lead_demo_happy_0001",
+          "sync_status": "fresh",
+          "last_correlation_id": "corr_demo_slot_conflict_0001"
+        }
+      ],
+      "evidence": [
+        {
+          "clinic_id": "11111111-1111-4111-8111-111111111111",
+          "conversation_id": "conv_demo_happy_0001",
+          "evidence_id": "evidence_demo_hours_0001",
+          "source_id": "81000000-0000-4000-8000-000000000001",
+          "title": "Horario de atendimento demo",
+          "source_type": "schedule_rule",
+          "source_status": "active",
+          "approval_state": "approved",
+          "knowledge_version": "demo-hours-v1",
+          "source_date": "2026-05-27",
+          "cited_reference": "SSOT-DEMO-HOURS",
+          "safe_summary": "Fonte operacional aprovada usada para responder sobre horario.",
+          "confidence": "high",
+          "support": "supported",
+          "policy_version": "demo-policy-v1",
+          "rule_version": "demo-rule-v1",
+          "prompt_version": "demo-prompt-v1",
+          "fallback_used": false,
+          "fallback_reason": null,
+          "handoff_required": false,
+          "recorded_at": "2026-05-25T06:30:02Z"
+        },
+        {
+          "clinic_id": "11111111-1111-4111-8111-111111111111",
+          "conversation_id": "conv_demo_ssot_missing_0001",
+          "evidence_id": "evidence_demo_missing_0001",
+          "source_id": "81000000-0000-4000-8000-000000000002",
+          "title": "Fonte ausente para roteiro negativo",
+          "source_type": "faq",
+          "source_status": "inactive",
+          "approval_state": "draft",
+          "knowledge_version": "demo-missing-v1",
+          "source_date": "2026-05-27",
+          "cited_reference": "SSOT-DEMO-MISSING",
+          "safe_summary": "Informacao requer verificacao humana.",
+          "confidence": "low",
+          "support": "unsupported",
+          "policy_version": "demo-policy-v1",
+          "rule_version": "demo-rule-v1",
+          "prompt_version": "demo-prompt-v1",
+          "fallback_used": true,
+          "fallback_reason": "SOURCE_MISSING",
+          "handoff_required": true,
+          "recorded_at": "2026-05-25T06:35:02Z"
+        }
+      ],
+      "exceptions": [
+        {
+          "clinic_id": "11111111-1111-4111-8111-111111111111",
+          "human_escalation_id": "he_demo_ssot_missing_0001",
+          "severity": "medium",
+          "exception_reason": "source_missing",
+          "reason": "source_missing",
+          "status": "open",
+          "automation_state": "pausada",
+          "affected_entity_type": "policy",
+          "affected_entity_id": "81000000-0000-4000-8000-000000000002",
+          "safe_summary": "Fonte SSOT ausente para resposta operacional solicitada.",
+          "suggested_action": "Atualizar fonte SSOT aprovada ou responder manualmente com seguranca.",
+          "sla_impact": "at_risk",
+          "owner_role": "receptionist",
+          "owner_user_id": null,
+          "created_at": "2026-05-25T06:35:02Z",
+          "claimed_at": null,
+          "resolved_at": null,
+          "due_at": "2026-05-25T06:50:00Z",
+          "linked_event_id": "evt_demo_sync_failure_0001",
+          "conversation_id": "conv_demo_ssot_missing_0001",
+          "contact_id": "contact_demo_lead_0001",
+          "lead_id": "lead_demo_ssot_missing_0001",
+          "workflow_run_id": "wf_demo_happy_0001",
+          "correlation_id": "corr_demo_ssot_missing_0001"
+        },
+        {
+          "clinic_id": "11111111-1111-4111-8111-111111111111",
+          "human_escalation_id": "he_demo_ambiguous_0001",
+          "severity": "medium",
+          "exception_reason": "ambiguous_intent",
+          "reason": "ambiguous_intent",
+          "status": "assigned",
+          "automation_state": "pausada",
+          "affected_entity_type": "conversation",
+          "affected_entity_id": "conv_demo_happy_0001",
+          "safe_summary": "Intencao ambigua exige revisao humana antes de continuar.",
+          "suggested_action": "Assumir caso e registrar decisao operacional.",
+          "sla_impact": "at_risk",
+          "owner_role": "receptionist",
+          "owner_user_id": "dddddddd-1000-4000-8000-dddddddddddd",
+          "created_at": "2026-05-25T06:39:02Z",
+          "claimed_at": "2026-05-25T06:41:00Z",
+          "resolved_at": null,
+          "due_at": "2026-05-25T06:55:00Z",
+          "linked_event_id": "evt_demo_ambiguous_0001",
+          "conversation_id": "conv_demo_happy_0001",
+          "contact_id": "contact_demo_lead_0001",
+          "lead_id": "lead_demo_happy_0001",
+          "workflow_run_id": "wf_demo_happy_0001",
+          "correlation_id": "corr_demo_escalation_0001"
+        }
+      ],
+      "updated_at": "2026-05-25T06:40:00Z"
+    },
+    "duplicate_replay": {
+      "sync": {
+        "sync_status": "fresh",
+        "last_success_at": "2026-05-25T06:31:00Z",
+        "lag_seconds": 0,
+        "correlation_id": "corr_demo_replay_0001",
+        "idempotency_key": "idem_demo_book_happy_0001"
+      },
+      "pipeline": [
+        {
+          "clinic_id": "11111111-1111-4111-8111-111111111111",
+          "contact_id": "contact_demo_lead_0001",
+          "lead_id": "lead_demo_happy_0001",
+          "conversation_id": "conv_demo_happy_0001",
+          "classification": "new_lead",
+          "qualification_status": "complete",
+          "conversation_status": "booked",
+          "next_action": "Replay idempotente ignorado sem duplicar estado visual.",
+          "sla_status": "within_target",
+          "sla_target_seconds": 120,
+          "sla_elapsed_seconds": 37,
+          "delivery_status": "sent",
+          "last_workflow_run_id": "wf_demo_happy_0001",
+          "appointment_status": "confirmed",
+          "last_correlation_id": "corr_demo_replay_0001",
+          "updated_at": "2026-05-25T06:31:00Z"
+        }
+      ],
+      "timeline": [
+        {
+          "clinic_id": "11111111-1111-4111-8111-111111111111",
+          "timeline_event_id": "tl_demo_happy_0001",
+          "contact_id": "contact_demo_lead_0001",
+          "conversation_id": "conv_demo_happy_0001",
+          "lead_id": "lead_demo_happy_0001",
+          "appointment_id": "appt_demo_happy_0001",
+          "event_type": "appointment_booked",
+          "summary": "Replay demo retornou o mesmo evento canonico.",
+          "occurred_at": "2026-05-25T06:30:03Z",
+          "actor_type": "system",
+          "source_system": "demo_mock",
+          "correlation_id": "corr_demo_replay_0001"
+        }
+      ],
+      "agenda": [
+        {
+          "clinic_id": "11111111-1111-4111-8111-111111111111",
+          "appointment_id": "appt_demo_happy_0001",
+          "slot_id": "slot_demo_available_0001",
+          "professional_id": "prof_demo_ana_0001",
+          "room_id": "room_demo_001",
+          "service_id": "33333333-3333-4333-8333-333333333333",
+          "duration_minutes": 60,
+          "starts_at": "2026-05-26T13:00:00Z",
+          "ends_at": "2026-05-26T14:00:00Z",
+          "timezone": "America/Sao_Paulo",
+          "appointment_status": "confirmed",
+          "booking_source": "demo_mock",
+          "contact_id": "contact_demo_lead_0001",
+          "lead_id": "lead_demo_happy_0001",
+          "sync_status": "fresh",
+          "last_correlation_id": "corr_demo_replay_0001"
+        }
+      ],
+      "evidence": [],
+      "exceptions": [],
+      "updated_at": "2026-05-25T06:31:00Z"
+    },
+    "same_phone_cross_tenant": {
+      "sync": {
+        "sync_status": "fresh",
+        "last_success_at": "2026-05-25T06:34:02Z",
+        "lag_seconds": 0,
+        "correlation_id": "corr_demo_cross_tenant_0001",
+        "idempotency_key": "idem_demo_cross_tenant_0001"
+      },
+      "pipeline": [
+        {
+          "clinic_id": "55555555-5555-4555-8555-555555555555",
+          "contact_id": "contact_demo_cross_tenant_0001",
+          "lead_id": "lead_demo_cross_tenant_0001",
+          "conversation_id": "conv_demo_cross_tenant_0001",
+          "classification": "new_lead",
+          "qualification_status": "not_started",
+          "conversation_status": "open",
+          "next_action": "Cross-tenant demo isolado por clinic_id.",
+          "sla_status": "within_target",
+          "sla_target_seconds": 120,
+          "sla_elapsed_seconds": 12,
+          "delivery_status": "sent",
+          "appointment_status": "offered",
+          "last_correlation_id": "corr_demo_cross_tenant_0001",
+          "updated_at": "2026-05-25T06:34:02Z",
+          "contact_phone": "PHONE_DEMO_PLACEHOLDER_001"
+        }
+      ],
+      "timeline": [
+        {
+          "clinic_id": "55555555-5555-4555-8555-555555555555",
+          "timeline_event_id": "tl_demo_cross_tenant_0001",
+          "contact_id": "contact_demo_cross_tenant_0001",
+          "conversation_id": "conv_demo_cross_tenant_0001",
+          "lead_id": "lead_demo_cross_tenant_0001",
+          "event_type": "contact_classified",
+          "summary": "Mesmo placeholder de telefone classificado apenas na clinica ativa.",
+          "occurred_at": "2026-05-25T06:34:02Z",
+          "actor_type": "automation",
+          "source_system": "demo_mock",
+          "correlation_id": "corr_demo_cross_tenant_0001"
+        }
+      ],
+      "agenda": [
+        {
+          "clinic_id": "55555555-5555-4555-8555-555555555555",
+          "appointment_id": "appt_demo_cross_tenant_0001",
+          "slot_id": "slot_demo_cross_tenant_0001",
+          "professional_id": "prof_demo_norte_0001",
+          "room_id": "room_demo_norte_001",
+          "service_id": "66666666-6666-4666-8666-666666666666",
+          "duration_minutes": 60,
+          "starts_at": "2026-05-26T13:00:00Z",
+          "ends_at": "2026-05-26T14:00:00Z",
+          "timezone": "America/Sao_Paulo",
+          "appointment_status": "offered",
+          "booking_source": "demo_mock",
+          "contact_id": "contact_demo_cross_tenant_0001",
+          "lead_id": "lead_demo_cross_tenant_0001",
+          "sync_status": "fresh",
+          "last_correlation_id": "corr_demo_cross_tenant_0001"
+        }
+      ],
+      "evidence": [],
+      "exceptions": [],
+      "updated_at": "2026-05-25T06:34:02Z"
+    },
+    "crm_n8n_sync_failure": {
+      "sync": {
+        "sync_status": "stale",
+        "last_success_at": "2026-05-25T06:38:00Z",
+        "last_error_code": "UPSTREAM_FAILURE",
+        "lag_seconds": 300,
+        "correlation_id": "corr_demo_sync_failure_0001",
+        "idempotency_key": "idem_demo_sync_failure_0001"
+      },
+      "pipeline": [
+        {
+          "clinic_id": "11111111-1111-4111-8111-111111111111",
+          "lead_id": "lead_demo_happy_0001",
+          "conversation_id": "conv_demo_happy_0001",
+          "conversation_status": "booked",
+          "appointment_status": "confirmed"
+        }
+      ],
+      "timeline": [],
+      "agenda": [
+        {
+          "clinic_id": "11111111-1111-4111-8111-111111111111",
+          "appointment_id": "appt_demo_happy_0001",
+          "appointment_status": "confirmed",
+          "starts_at": "2026-05-26T13:00:00Z"
+        }
+      ],
+      "evidence": [],
+      "exceptions": [],
+      "updated_at": "2026-05-25T06:38:00Z"
+    }
+  }
+}

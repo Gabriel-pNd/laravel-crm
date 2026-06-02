@@ -10,6 +10,7 @@ use Webkul\NeuroFlow\Application\Presenters\RealtimeOperationPresenter;
 use Webkul\NeuroFlow\Domain\Contracts\ActiveClinicMemberships;
 use Webkul\NeuroFlow\Domain\Contracts\RealtimeOperationReadModel;
 use Webkul\NeuroFlow\Http\Middleware\ResolveActiveClinic;
+use Webkul\NeuroFlow\Infrastructure\Demo\DemoRealtimeOperationReadModel;
 use Webkul\NeuroFlow\Infrastructure\Supabase\SupabaseActiveClinicMemberships;
 use Webkul\NeuroFlow\Infrastructure\Supabase\SupabaseRealtimeOperationReadModel;
 
@@ -21,7 +22,13 @@ class NeuroFlowServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(dirname(__DIR__).'/Config/menu.php', 'menu.admin');
         $this->mergeConfigFrom(dirname(__DIR__).'/Config/acl.php', 'acl');
 
-        $this->app->bind(RealtimeOperationReadModel::class, SupabaseRealtimeOperationReadModel::class);
+        $this->app->bind(RealtimeOperationReadModel::class, function () {
+            if (config('neuroflow.demo_mode') && config('neuroflow.use_supabase_mocks')) {
+                return new DemoRealtimeOperationReadModel;
+            }
+
+            return $this->app->make(SupabaseRealtimeOperationReadModel::class);
+        });
         $this->app->bind(ActiveClinicMemberships::class, SupabaseActiveClinicMemberships::class);
         $this->app->bind(GetRealtimeOperationState::class);
         $this->app->bind(RealtimeOperationPresenter::class);
